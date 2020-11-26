@@ -6,7 +6,7 @@
 ## 		-make tar      = create an archive .tar with all the source code, headers and this makefile
 ## 		-make zip 	   = create an archive .zip with all the source code, headers and this makefile
 ## 		-make init	   = init the workspace
-## 		-make test 	   = //! ne marche pas pour l'instant
+## 		-make test 	   = Execute un fichier test
 ##
 ###################################################################################################
 
@@ -27,7 +27,7 @@ DIRECTORIES = $(subst $(SRCFILE),$(OBJFILE),$(shell find $(SRCFILE) -type d))
 
 CLIENT = client
 SERVER = serveur
-TEST = test
+TEST = test_cloud
 
 
 SRC     = $(SRCFILE)/cloud.cpp $(SRCFILE)/site.cpp # ajout tout les sources annexe au main
@@ -75,13 +75,13 @@ $(SERVER): $(OBJFILE)/serveur.o $(OBJ)
 	@echo "$(LGREENCOLOR)-------------------------------------------------------------------$(ENDCOLOR)"
 	@echo "$(LGREENCOLOR)| Executable: $(ENDCOLOR)$(LPURPLECOLOR)$(EXEFILE)/$(SERVER)$(ENDCOLOR)"
 
-$(TEST): $(OBJFILE)/test_cloud.o $(OBJ)
+test : $(OBJFILE)/$(TEST).o $(OBJ)
 	@mkdir -p $(EXEFILE)
 	@echo "$(LGREENCOLOR)-------------------------------------------------------------------$(ENDCOLOR)"
 	@echo "$(LGREENCOLOR)| Linking:    $(ENDCOLOR)$(LYELLOWCOLOR)$^$(ENDCOLOR)"
-	@$(CXX) $^ -o $(EXEFILE)/$(TEST) $(LDFLAGS)
+	@$(CXX) $^ -o $(EXEFILE)/test $(LDFLAGS)
 	@echo "$(LGREENCOLOR)-------------------------------------------------------------------$(ENDCOLOR)"
-	@echo "$(LGREENCOLOR)| Executable: $(ENDCOLOR)$(LPURPLECOLOR)$(EXEFILE)/$(SERVER)$(ENDCOLOR)"
+	@echo "$(LGREENCOLOR)| Executable: $(ENDCOLOR)$(LPURPLECOLOR)$(EXEFILE)/test$(ENDCOLOR)"
 
 
 $(OBJFILE)/%.o: $(SRCFILE)/%.cpp
@@ -101,7 +101,7 @@ else
 endif
 
 cleanall: clean
-	@rm -f $(EXEFILE)/$(CLIENT) $(EXEFILE)/$(SERVER)
+	@rm -f $(EXEFILE)/$(CLIENT) $(EXEFILE)/$(SERVER) $(EXEFILE)/test
 
 clean:
 	@rm -f $(OBJFILE)/*.o
