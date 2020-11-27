@@ -1,4 +1,4 @@
-#ifndef CLOUD_HPP
+#ifndef CLOUD_HPP   
 #define CLOUD_HPP
 
 #include <iostream>
@@ -36,7 +36,7 @@ int destroy_cloud(Cloud*);
 /* 
     Ajoute un site au cloud
     @return 0 si OK -1 sinon
- */
+*/
 int add_site(Cloud*, Site);
 
 /* 
@@ -51,7 +51,7 @@ Site* get_site(Cloud*, int pos);
     Supprime le site à la position i du cloud
     @param i position du site
     @return 0 si OK -1 sinon
- */
+*/
 int rm_site(Cloud*, int i);
 
 /* 
