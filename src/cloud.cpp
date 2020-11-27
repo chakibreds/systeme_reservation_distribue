@@ -1,6 +1,6 @@
 #include <iostream>
 #include <stdio.h>
-#include <json-c/json.h>
+#include "../inc/json-c/json.h"
 #include "../inc/site.hpp"
 #include "../inc/cloud.hpp"
 
@@ -78,6 +78,34 @@ int destroy_cloud(Cloud* cloud) {
     cloud->size = 0;
     return 0;
 }
+
+int add_site(Cloud* cloud,Site* site) {
+    if (cloud == NULL || site == NULL) {
+        cerr << "Null pointeur" << endl;
+        return -1;
+    }
+    cloud->sites = (Site**) realloc(cloud->sites, cloud->size + 1);
+    if (cloud->sites == NULL) return -1;
+    cloud->sites[cloud->size] = site;
+    cloud->size += 1;
+    return 0;
+}
+
+Site* get_site(Cloud* cloud, int i) {
+    if (cloud == NULL || i >= cloud->size) return NULL;
+    return cloud->sites[i];
+}
+
+int rm_site(Cloud* cloud, int i) {
+    if (cloud == NULL || i >= cloud->size || cloud->sites[i] == NULL) return -1;
+    if (destroy_site(cloud->sites[i]) == -1) return -1;
+    for (int j = i; j < cloud->size - 1; j++)
+        cloud->sites[j] = cloud->sites[j+1];
+    cloud->sites = (Site**) realloc(cloud->sites, cloud->size - 1);
+    cloud->size -= 1;
+    return (cloud->sites==NULL)?-1:0;
+}
+
 
 void print_cloud(Cloud* cloud) {
     if (cloud == NULL) {

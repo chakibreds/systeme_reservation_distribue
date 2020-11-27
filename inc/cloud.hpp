@@ -36,23 +36,33 @@ int destroy_cloud(Cloud*);
 /* 
     Ajoute un site au cloud
     @return 0 si OK -1 sinon
+<<<<<<< HEAD
 */
 int add_site(Cloud*, Site);
+=======
+ */
+int add_site(Cloud*, Site*);
+>>>>>>> 083175704836be65880b71d586973e130962ee63
 
 /* 
     Retourne l'adresse du site à la position pos
     @param pos position du site
-    @return l'adresse du site
+    @return l'adresse du site ou NULL en cas d'erreur
 
  */
 Site* get_site(Cloud*, int pos);
 
 /* 
-    Supprime le site à la position i du cloud
-    @param i position du site
+    Supprime le site à la position pos du cloud
+    @param pos position du site
     @return 0 si OK -1 sinon
+<<<<<<< HEAD
 */
 int rm_site(Cloud*, int i);
+=======
+ */
+int rm_site(Cloud*, int pos);
+>>>>>>> 083175704836be65880b71d586973e130962ee63
 
 /* 
     Affiche un cloud
