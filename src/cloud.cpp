@@ -113,7 +113,7 @@ void print_cloud(Cloud* cloud) {
         return;
     }
     for(int i = 0; i < cloud->size; i++) {
-        cout << "Site " << i << ": ";
+        cout << "Site " << i+1 << ": ";
         print_site(cloud->sites[i]);
         cout << endl;
     }

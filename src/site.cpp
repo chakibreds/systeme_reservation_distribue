@@ -98,6 +98,11 @@ Site* init_site(const char* name, int cpu, int memory) {
 
 void print_site(Site* site) {
     cout << "{'" << site->name << "': cpu: " << site->ressource_available.cpu << ", mem: " << site->ressource_available.memory <<"}";
+    for(int i = 0; i< site->number_reserved ; i++)
+    {
+        cout << "{'"<<site->clients[i].name<<"': ressources reserved -> cpu: " << site->reserved[i].cpu << ", mem: " << site->reserved[i].memory <<"}";
+        cout <<endl;
+    }
     return;
 }
 
@@ -133,6 +138,7 @@ int alloc_resource(Client client, Site* site, int cpu, int memory) {
         if (pos_client == -1) {
             site->reserved = add_resource(site->reserved, {.cpu= cpu, .memory= memory}, site->number_reserved);
             site->clients = add_client(site->clients, client, site->number_reserved);
+            site->number_reserved++;
             if (site->clients == NULL || site->reserved == NULL)
                 return -1;
         } else {
@@ -141,24 +147,26 @@ int alloc_resource(Client client, Site* site, int cpu, int memory) {
         }
         site->ressource_available.cpu -= cpu;
         site->ressource_available.memory -= memory;
-        site->number_reserved++;
         return 0;
     } else 
         return -1;
 }
 
 int free_client_resource(Client client, Site* site) {
-    int i = 0;
-    for (i = 0; i < site->number_reserved; i++)
+    int cl = -1;
+    for (int i = 0; i < site->number_reserved; i++)
         if (site->clients[i].id == client.id)
-            break;
+            {
+                cl = i;
+                break;
+            }
 
-    if (i >= site->number_reserved) {
+    if (cl == -1) {
         cerr << "Impossible de libérer la ressource" << endl << "Client num°" << client.id << " Introuvable dans la liste des réservarion" << endl;
         return -1;
     }
 
-    site->reserved = rm_resource(site->reserved, i, site->number_reserved);
+    site->reserved = rm_resource(site->reserved, cl, site->number_reserved);
     site->number_reserved -= 1;
     return 0;
 }

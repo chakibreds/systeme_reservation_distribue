@@ -20,7 +20,7 @@ int main(int argc, char const *argv[]) {
     srand(getpid() * time(NULL));
     Cloud* cloud = init_cloud_json(argv[1]);
     Client client;
-    client.id = 0; client.port=34000;
+    client.id = 1; client.port=34000;
     strcpy(client.name, "Massy");
     strcpy(client.ip_address, "127.0.0.1");
 
@@ -56,7 +56,7 @@ int main(int argc, char const *argv[]) {
     cout << "Libération de toutes les ressources" << endl;
     for (int j = 0; j < cloud->size; j++) {
         cout << "Site "<< cloud->sites[j]->name << " : " << endl;
-        if (free_client_resource(client, site) == -1) 
+        if (free_client_resource(client, cloud->sites[j]) == -1) 
             cerr << "\tImpossible de liberer la ressource" << endl;
         else
             cout << "\tLibération OK" << endl;        
