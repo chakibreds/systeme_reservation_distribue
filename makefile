@@ -15,8 +15,8 @@ CXX      = g++
 CXXFLAGS = -std=c++2a -Wextra -Wall -pedantic# -g -O2 
 LDFLAGS  = -lpthread
 
-CXXFLAGS += $(shell pkg-config --cflags json-c)
-LDFLAGS += $(shell pkg-config --libs json-c)
+CXXFLAGS += -I./inc #-I./inc/json #json-c
+LDFLAGS += -L./lib -ljson-c
 
 SRCFILE = src
 INCFILE = inc
@@ -27,7 +27,7 @@ DIRECTORIES = $(subst $(SRCFILE),$(OBJFILE),$(shell find $(SRCFILE) -type d))
 
 CLIENT = client
 SERVER = serveur
-TEST = test_cloud
+TEST = test_cloud # nom du programme de test
 
 
 SRC     = $(SRCFILE)/cloud.cpp $(SRCFILE)/site.cpp # ajout tout les sources annexe au main
@@ -75,7 +75,7 @@ $(SERVER): $(OBJFILE)/serveur.o $(OBJ)
 	@echo "$(LGREENCOLOR)-------------------------------------------------------------------$(ENDCOLOR)"
 	@echo "$(LGREENCOLOR)| Executable: $(ENDCOLOR)$(LPURPLECOLOR)$(EXEFILE)/$(SERVER)$(ENDCOLOR)"
 
-test : $(OBJFILE)/$(TEST).o $(OBJ)
+test : $(OBJFILE)/test_resource_client.o $(OBJ)
 	@mkdir -p $(EXEFILE)
 	@echo "$(LGREENCOLOR)-------------------------------------------------------------------$(ENDCOLOR)"
 	@echo "$(LGREENCOLOR)| Linking:    $(ENDCOLOR)$(LYELLOWCOLOR)$^$(ENDCOLOR)"
@@ -117,5 +117,3 @@ tar :
 zip : 
 	@echo "$(LGREENCOLOR)| Creating $(ARCHIVE_NAME).zip:    $(ENDCOLOR)$(LYELLOWCOLOR)$^$(ENDCOLOR)"
 	@zip -r $(ARCHIVE_NAME).zip makefile $(SRC) $(INC)
-
-

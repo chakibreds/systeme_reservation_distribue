@@ -22,13 +22,17 @@ typedef struct {
 
 /* 
     Ajout d'un client au tableau de clients
+    @return NULL en cas d'échec ou le pointeur vers la nouvelle adresse
  */
-int add_client(Client*, Client, int old_size);
+Client* add_client(Client*, Client, int old_size);
+
+int exist_client(Client*, int, int);
 
 /* 
     Supprime l'élement j
- */
-int rm_client(Client*, int, int);
+    @return NULL en cas d'échec ou le pointeur vers la nouvelle adresse
+*/
+Client* rm_client(Client*, int, int);
 
 typedef struct {
     int cpu;
@@ -37,13 +41,14 @@ typedef struct {
 
 /* 
     Ajout d'une ressource au tableau de ressources donnée en param
+    @return NULL en cas d'échec ou le pointeur vers la nouvelle adresse
  */
-int add_resource(Resource*, Resource, int old_size);
+Resource* add_resource(Resource*, Resource, int old_size);
 
 /* 
     Supprime l'élement j
  */
-int rm_resource(Resource*, int, int);
+Resource* rm_resource(Resource*, int, int);
 
 
 typedef struct {

@@ -37,22 +37,22 @@ int destroy_cloud(Cloud*);
     Ajoute un site au cloud
     @return 0 si OK -1 sinon
  */
-int add_site(Cloud*, Site);
+int add_site(Cloud*, Site*);
 
 /* 
     Retourne l'adresse du site à la position pos
     @param pos position du site
-    @return l'adresse du site
+    @return l'adresse du site ou NULL en cas d'erreur
 
  */
 Site* get_site(Cloud*, int pos);
 
 /* 
-    Supprime le site à la position i du cloud
-    @param i position du site
+    Supprime le site à la position pos du cloud
+    @param pos position du site
     @return 0 si OK -1 sinon
  */
-int rm_site(Cloud*, int i);
+int rm_site(Cloud*, int pos);
 
 /* 
     Affiche un cloud
