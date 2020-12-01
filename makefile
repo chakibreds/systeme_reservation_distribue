@@ -30,7 +30,7 @@ SERVER = serveur
 TEST = test_cloud # nom du programme de test
 
 
-SRC     = $(SRCFILE)/cloud.cpp $(SRCFILE)/site.cpp # ajout tout les sources annexe au main
+SRC     = $(SRCFILE)/cloud.cpp $(SRCFILE)/site.cpp $(SRCFILE)/reservation.cpp $(SRCFILE)/define.cpp  # ajout tout les sources annexe au main
 INC     = $(wildcard $(INCFILE)/*.hpp) $(wildcard $(INCFILE)/**/*.hpp)
 OBJ     = $(SRC:$(SRCFILE)/%.cpp=$(OBJFILE)/%.o)
 ARCHIVE_NAME = source_code#$(shell date +%D)

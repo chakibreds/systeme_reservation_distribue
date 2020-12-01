@@ -1,13 +1,16 @@
 #include <iostream>
 #include <stdio.h>
-#include "../inc/site.hpp"
-#include "../inc/cloud.hpp"
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
 #include <string.h>
 #include <pthread.h>
-#include "define.hpp"
+
+#include "../inc/site.hpp"
+#include "../inc/cloud.hpp"
+#include "../inc/reservation.hpp"
+#include "../inc/define.hpp"
+
 
 using namespace std;
 int semid;
@@ -29,8 +32,10 @@ struct sembuf signalZ = {.sem_num = 1, .sem_op = 0, .sem_flg = 0};
 void* wait_thread(void* params) {
     while(1) {
         semop(semid,&signalZ,1);
+        semop(semid, &verrouP, 1);
         destroy_cloud(cloud);
         cloud = decode_cloud(cloud_json,MAX_LEN_BUFFER_JSON);
+        semop(semid, &verrouV, 1);
         system("clear");
         cout << "MAJ aprés une modification d'un autre client"<<endl;
         print_cloud(cloud);
@@ -50,14 +55,7 @@ int main(int argc, char const *argv[])
         cerr << "Usage: "<< argv[0] <<" chemin_vers_fichier_ipc id" << endl;
         exit(1);
     }
-    Client client;
-    client.id = atoi(argv[2]);
-    client.port = 34000;
-    strcpy(client.ip_address, "127.0.0.1");
-    cout << "entrez votre nom svp : ";
-    cin >> client.name;
-    cout << "vous êtes : " << client.name << " et votre id est : " << client.id << endl;
-    
+
     key_t cle = ftok(argv[1], 'a');
     if (cle == -1)
     {
@@ -85,8 +83,20 @@ int main(int argc, char const *argv[])
         perror("erreur shmat");
         exit(1);
     }
+
+    Client client;
+    client.id = atoi(argv[2]);
+    client.port = 34000;
+    strcpy(client.ip_address, "127.0.0.1");
+    cout << "entrez votre nom svp : ";
+    fgets(client.name, MAX_LEN_NAME_CLIENT,stdin);
+    client.name[strlen(client.name)-1]='\0';
+    cout << "vous êtes : " << client.name << " et votre id est : " << client.id << endl;
     
+    semop(semid, &verrouP, 1);
     cloud = decode_cloud(cloud_json,MAX_LEN_BUFFER_JSON);
+    Reservation* reservation = init_reservation(cloud, client);
+    semop(semid, &verrouV, 1);
     print_cloud(cloud);
 
     pthread_t thread_id;
@@ -94,12 +104,13 @@ int main(int argc, char const *argv[])
         cerr << "Can't create the waiting thread" << endl;
         return 1;
     }
-
+    fflush(stdin);
     while (1) {
         cout << "> ";
         char cmd[100];
-        cin >> cmd;
-
+        fgets(cmd,100,stdin);
+        cmd[strlen(cmd)-1]='\0';
+         
         char* ptr = strtok(cmd, " ");
 
         if (strcmp(ptr, "help") == 0) {
@@ -110,9 +121,62 @@ int main(int argc, char const *argv[])
             return 0;
         } else if (strcmp(ptr, "alloc") == 0){
             // allocation
+            cout << "cmd : "<<cmd<<endl;
+            char server_name[MAX_LEN_NAME_SITE];
+            int cpu, mem;
+            ptr = strtok(NULL, " ");
+            if (ptr == NULL) {
+                cerr << "server_name introuvable" << endl;
+            } else {
+                strcpy(server_name, ptr);
+            }
+            ptr = strtok(NULL, " ");
+            if (ptr == NULL) {
+                cerr << "cpu introuvable" << endl;
+            } else {
+                cpu = atoi(ptr);
+            }
+            ptr = strtok(NULL, " ");
+            if (ptr == NULL) {
+                cerr << "mem introuvable" << endl;
+            } else  {
+                mem = atoi(ptr);
+            }
+                cout << "server_name : "<< server_name << "cpu : "<<cpu << "memory :"<< mem << endl;
+            semop(semid, &verrouP, 1);
+            if (reserve_resources(cloud, reservation, server_name, {.cpu = cpu, .memory = mem}) == -1) {
+                cerr << "Impossible d'allouer" << endl;
+            } else {
+                if (code_cloud(cloud, cloud_json, MAX_LEN_BUFFER_JSON) == -1) {
+                    cerr << "impossible de coder le cloud en json" << endl;
+                }
+                semop(semid, &signalP, 1);
+                semop(semid, &signalV, 1);
+            }
+            semop(semid, &verrouV, 1);
 
         } else if (strcmp(ptr, "free") == 0) {
             // free
+            char server_name[MAX_LEN_NAME_SITE];
+           
+            ptr = strtok(NULL, " ");
+            if (ptr == NULL) {
+                cerr << "server_name introuvable" << endl;
+            } else {
+                strcpy(server_name, ptr);
+            }
+
+            semop(semid, &verrouP, 1);
+            if (free_allocation(cloud,reservation, server_name) == -1) {
+                cerr << "Free impossible" << endl;
+            } else {
+                if (code_cloud(cloud, cloud_json, MAX_LEN_BUFFER_JSON) == -1) {
+                    cerr << "impossible de coder le cloud en json" << endl;
+                }
+                semop(semid, &signalP, 1);
+                semop(semid, &signalV, 1);
+            }
+            semop(semid, &verrouV, 1);
         } else {
             // non reconnu
             cout << "Commande '" << ptr << "' non reconnu" << endl

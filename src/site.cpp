@@ -46,3 +46,18 @@ int get_memory_available(Site* site) {
     else 
         return site->ressource_available.memory;
 }
+
+int alloc_resource(Site* site, int cpu, int memory) {
+    if (site != NULL && get_cpu_available(site) >= cpu && get_memory_available(site) >= memory) {
+        site->ressource_available.cpu -= cpu;
+        site->ressource_available.memory -= memory;
+        return 0;
+    } else 
+        return -1;
+}
+
+int free_resource(Site* site, int cpu, int memory) {
+    site->ressource_available.cpu += cpu;
+    site->ressource_available.memory += memory;
+    return 0;
+}

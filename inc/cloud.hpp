@@ -49,6 +49,9 @@ int add_site(Cloud*, Site*);
  */
 Site* get_site(Cloud*, int pos);
 
+
+Site* get_site_by_name(Cloud*, char*);
+
 /* 
     Supprime le site à la position pos du cloud
     @param pos position du site

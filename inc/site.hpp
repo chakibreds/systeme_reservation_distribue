@@ -54,7 +54,7 @@ int get_cpu_available(Site*);
 
 int get_memory_available(Site*);
 
-
-
+int alloc_resource(Site* site, int, int );
+int free_resource(Site* site, int, int);
 
 #endif

@@ -100,6 +100,15 @@ Site* get_site(Cloud* cloud, int i) {
     return cloud->sites[i];
 }
 
+Site* get_site_by_name(Cloud* cloud, char* server_name) {
+    int i;
+    for(i = 0 ; i < cloud->size; i++)
+        if (strcmp(cloud->sites[i]->name, server_name) == 0)
+            break;
+    
+    return (i<cloud->size?cloud->sites[i]:NULL);
+}
+
 int rm_site(Cloud* cloud, int i) {
     if (cloud == NULL || i >= cloud->size || cloud->sites[i] == NULL) return -1;
     if (destroy_site(cloud->sites[i]) == -1) return -1;

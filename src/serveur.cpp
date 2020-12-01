@@ -4,10 +4,10 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
-#include "../inc/json-c/json.h"
 #include "../inc/site.hpp"
 #include "../inc/cloud.hpp"
-#include "define.hpp"
+#include "../inc/reservation.hpp"
+#include "../inc/define.hpp"
 
 using namespace std;
 
