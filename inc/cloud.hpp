@@ -26,6 +26,8 @@ typedef struct {
  */
 Cloud* init_cloud_json(const char* file_name);
 
+Cloud* init_cloud(const char* json);
+
 /* 
     Désaloue l'esapce alloué par une struct cloud
     @param cloud le cloud à detruire
@@ -65,5 +67,20 @@ void print_cloud(Cloud*);
     // methode code()
     // methode decode()
  */
+
+/* 
+    serialize le cloud en chaine de caractère
+    @param cloud le cloud
+    @param size_string la taille de la chaine 
+    @param code l'adresse d'une chaine
+    @return the size of the string si réussi -1 sinon
+ */
+int code_cloud(Cloud* cloud, char* code, int size_string);
+
+/* 
+    @return NULL if error
+ */
+Cloud* decode_cloud(char* code, int);
+
 
 #endif

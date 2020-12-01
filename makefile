@@ -75,7 +75,7 @@ $(SERVER): $(OBJFILE)/serveur.o $(OBJ)
 	@echo "$(LGREENCOLOR)-------------------------------------------------------------------$(ENDCOLOR)"
 	@echo "$(LGREENCOLOR)| Executable: $(ENDCOLOR)$(LPURPLECOLOR)$(EXEFILE)/$(SERVER)$(ENDCOLOR)"
 
-test : $(OBJFILE)/test_resource_client.o $(OBJ)
+test : $(OBJFILE)/test_code_decode.o $(OBJ)
 	@mkdir -p $(EXEFILE)
 	@echo "$(LGREENCOLOR)-------------------------------------------------------------------$(ENDCOLOR)"
 	@echo "$(LGREENCOLOR)| Linking:    $(ENDCOLOR)$(LYELLOWCOLOR)$^$(ENDCOLOR)"

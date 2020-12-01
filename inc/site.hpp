@@ -12,6 +12,8 @@
 
 #define MAX_LEN_NAME_SITE 50
 #define MAX_LEN_NAME_CLIENT 50
+#define MAX_LEN_CPU 6
+
 
 typedef struct {
     int id;
@@ -96,5 +98,6 @@ int free_client_resource(Client client, Site*);
     // methode code()
     // methode decode()
  */
+
 
 #endif
