@@ -7,7 +7,7 @@
 typedef struct {
     Resource* resources;
     char** name; // of size [MAX_LEN_NAME_SITE];
-    int number_reserved;
+    int number_server;
     Client client;
 } Reservation;
 

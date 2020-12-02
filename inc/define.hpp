@@ -1,5 +1,5 @@
-#ifndef DEFINE_HPP
-#define DEFINE_HPP
+#ifndef DEFINE_CLIENT_DEPANDANCE_HPP
+#define DEFINE_CLIENT_DEPANDANCE_HPP
 
 #include "site.hpp"
 #include "cloud.hpp"
@@ -18,6 +18,13 @@ union semun {
  */
 int reserve_resources(Cloud*, Reservation* ,char*, Resource);
 
-int free_allocation(Cloud*, Reservation*, char*);   
+int free_allocation(Cloud*, Reservation*, char*);
+int free_all_allocation(Cloud*, Reservation*);   
+
+commande interpret_cmd(char* cmd);
+/* 
+    @return -1 if error
+ */
+int execute_cmd(commande, Cloud*, char* cloud_json, Reservation*);
 
 #endif

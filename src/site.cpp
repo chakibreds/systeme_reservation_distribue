@@ -57,6 +57,7 @@ int alloc_resource(Site* site, int cpu, int memory) {
 }
 
 int free_resource(Site* site, int cpu, int memory) {
+    if (cpu < 0 || memory < 0) return -1;
     site->ressource_available.cpu += cpu;
     site->ressource_available.memory += memory;
     return 0;

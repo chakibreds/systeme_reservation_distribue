@@ -1,8 +1,6 @@
 #ifndef SITE_HPP
 #define SITE_HPP
 
-#include <iostream>
-
 /* 
     struct Site:
         Un site à un nom (exemple "Montpellier")

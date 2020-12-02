@@ -1,12 +1,30 @@
 #ifndef CLOUD_HPP   
 #define CLOUD_HPP
 
-#include <iostream>
-#include "../inc/site.hpp"
-
 // temporaire
 #define MAX_LEN_BUFFER_JSON 1024
+#include "site.hpp"
 
+//-------- Ecoute et traitement de demande
+
+typedef short cmd_t;
+#define CMD_ALLOC_WITH_NAMES 2
+#define CMD_ALLOC_ALL 3
+
+#define CMD_FREE_WITH_NAMES 5
+#define CMD_FREE_ALL 6
+
+#define CMD_EXIT 7
+#define CMD_HELP 8
+#define CMD_ERR 9
+
+typedef struct {
+    cmd_t cmd_type;
+    int* cpu;
+    int* memory;
+    char** server_name;
+    int nb_server;
+} commande;
 
 /* 
     struct Ressource:
@@ -58,6 +76,8 @@ Site* get_site_by_name(Cloud*, char*);
     @return 0 si OK -1 sinon
  */
 int rm_site(Cloud*, int pos);
+
+int check_commande(Cloud*, commande);
 
 /* 
     Affiche un cloud

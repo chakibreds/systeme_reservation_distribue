@@ -15,7 +15,7 @@ Reservation* init_reservation(Cloud* cloud, Client client) {
         res->name[i] = (char*) malloc(sizeof(char) * MAX_LEN_NAME_SITE);
         strcpy(res->name[i], cloud->sites[i]->name);
     }
-    res->number_reserved = cloud->size;
+    res->number_server = cloud->size;
     res->client = client;
     return res;
 }
@@ -28,16 +28,16 @@ int destroy_reservation(Reservation* res) {
 
 Resource* get_resource_by_server_name(Reservation* res, char* name_server) {
     int i = 0;
-    for (i = 0; i < res->number_reserved ; i++)
+    for (i = 0; i < res->number_server ; i++)
         if (strcmp(res->name[i], name_server) == 0)
             break;
-    if (i >= res->number_reserved) return NULL;
+    if (i >= res->number_server) return NULL;
     return res->resources + i;
 }
 
 
 Resource* get_resource_by_id(Reservation* res, int id) {
-    if (id < 0 || id >= res->number_reserved) return NULL;
+    if (id < 0 || id >= res->number_server) return NULL;
     return res->resources + id;
 }
 
@@ -60,7 +60,7 @@ Resource free_reservation(Reservation* res,char* server_name) {
 
 void print_reservation(Reservation* res) {
     cout << "Les reservation de " << res->client.name << " : " << endl;
-    for (int i = 0; i < res->number_reserved; i++) {
+    for (int i = 0; i < res->number_server; i++) {
         cout << "{ 'name': '" << res->name[i] << "', 'cpu': " << res->resources[i].cpu << ", 'memory': " << res->resources[i].memory << "} ";
     }
     cout << endl;

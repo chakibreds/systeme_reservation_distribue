@@ -4,6 +4,7 @@
 #include "../inc/json-c/json.h"
 #include "../inc/site.hpp"
 #include "../inc/cloud.hpp"
+#include "../inc/define.hpp"
 
 using namespace std;
 
@@ -119,6 +120,20 @@ int rm_site(Cloud* cloud, int i) {
     return (cloud->sites==NULL)?-1:0;
 }
 
+int check_commande(Cloud* cloud, commande cmd) {
+    if(cloud == NULL || cloud->sites == NULL) return -1;
+    cout << cmd.nb_server << endl;;
+    for (int i = 0; i < cmd.nb_server; i++) {
+        int cpu = cmd.cpu[i], mem = cmd.memory[i];
+        char* server_name = cmd.server_name[i];
+        cout << server_name << " DEB" << endl;
+        Site* site = get_site_by_name(cloud, server_name);
+        if (site == NULL || get_cpu_available(site) < cpu || get_memory_available(site) < mem) return -1;
+        cout << server_name << " FIN" << endl;
+    }
+    return 0;
+}
+
 
 void print_cloud(Cloud* cloud) {
     if (cloud == NULL) {
@@ -126,8 +141,9 @@ void print_cloud(Cloud* cloud) {
         return;
     }
     for(int i = 0; i < cloud->size; i++) {
-        cout << "Site " << i+1 << ": ";
-        print_site(cloud->sites[i]);
+        cout << "Site de '" << cloud->sites[i]->name<< "': ";
+        cout << "{cpu: " << cloud->sites[i]->ressource_available.cpu << ",";
+        cout << "memory: " << cloud->sites[i]->ressource_available.memory << "}";
         cout << endl;
     }
     return;
