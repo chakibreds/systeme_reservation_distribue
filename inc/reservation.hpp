@@ -24,6 +24,8 @@ Resource* get_resource_by_server_name(Reservation*, char* name_server);
 
 Resource* get_resource_by_id(Reservation*, int id);
 
+void print_resevation(Reservation*);
+
 /* 
     Ajout d'une ressource au tableau de ressources donnée en param
     @return NULL en cas d'échec ou le pointeur vers la nouvelle adresse

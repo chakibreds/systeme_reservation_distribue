@@ -41,6 +41,14 @@ Resource* get_resource_by_id(Reservation* res, int id) {
     return res->resources + id;
 }
 
+void print_resevation(Reservation* reservation) {
+    for(int i= 0; i < reservation->number_server; i++) {
+        int cpu = reservation->resources[i].cpu, mem = reservation->resources[i].memory;
+        if (cpu > 0 || mem > 0)
+            cout << reservation->name[i] << ": {.cpu: " << cpu << ", .memory: " << mem << "}" << endl;
+    }
+}
+
 Reservation* save_reservation(Reservation* res, Resource resource, char* server_name) {
     Resource* to_modify = get_resource_by_server_name(res, server_name);
     if (to_modify == NULL) return NULL;

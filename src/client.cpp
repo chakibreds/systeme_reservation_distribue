@@ -21,6 +21,7 @@ int semid;
 int shmid;
 char* cloud_json;
 Cloud* cloud;
+Reservation* reservation;
 
 struct sembuf verrouP = {.sem_num = 0, .sem_op = -1, .sem_flg = 0};
 
@@ -33,14 +34,18 @@ struct sembuf signalV = {.sem_num = 1, .sem_op = 1, .sem_flg = 0};
 struct sembuf signalZ = {.sem_num = 1, .sem_op = 0, .sem_flg = 0};
 
 
-int execute_cmd(commande cmd, Cloud* cloud, char* cloud_json, Reservation* reservation) {
+int execute_cmd(commande cmd, Reservation* reservation) {
     if (cmd.cmd_type == CMD_ALLOC_WITH_NAMES) {
         cout << "CMD_ALLOC_WITH_NAMES" << endl;
         semop(semid, &verrouP, 1);
-        if (check_commande(cloud, cmd) == -1) {
-            cout << "Non disponible faut le mettre en attente" << endl;
-            return 0;
-        } else cout << "Allocation possible" << endl;
+        while (check_commande(cloud, cmd) == -1) {
+            cout << "mise en attente" << endl;
+            semop(semid, &verrouV, 1);
+            semop(semid, &signalZ, 1);
+            semop(semid, &verrouP, 1);
+            destroy_cloud(cloud);
+            cloud = decode_cloud(cloud_json,MAX_LEN_BUFFER_JSON);
+        }
         
         for (int i = 0; i < cmd.nb_server; i++) {
             if (reserve_resources(cloud, reservation, cmd.server_name[i], {.cpu = cmd.cpu[i], .memory = cmd.memory[i]}) == -1) {cerr << "Impossible d'allouer " << cmd.server_name[i] << endl;} else cout << "Allocation de " << cmd.server_name[i] << endl;
@@ -102,6 +107,7 @@ void* wait_thread(void* params) {
         cloud = decode_cloud(cloud_json,MAX_LEN_BUFFER_JSON);
         system("clear");
         print_cloud(cloud);
+        print_reservation(reservation);
         semop(semid, &verrouV, 1);
     }
 }
@@ -150,7 +156,7 @@ int main(int argc, char const *argv[])
     
     semop(semid, &verrouP, 1);
     cloud = decode_cloud(cloud_json,MAX_LEN_BUFFER_JSON);
-    Reservation* reservation = init_reservation(cloud, client);
+    reservation = init_reservation(cloud, client);
     semop(semid, &verrouV, 1);
     print_cloud(cloud);
 
@@ -168,7 +174,7 @@ int main(int argc, char const *argv[])
          
         commande cmd = interpret_cmd(in_buffer);
         
-        if (execute_cmd(cmd, cloud, cloud_json, reservation) == -1)
+        if (execute_cmd(cmd, reservation) == -1)
             cerr << "Erreur à l'éxecution de la commande" << endl;
         if (cmd.cmd_type == CMD_EXIT)
             break;
