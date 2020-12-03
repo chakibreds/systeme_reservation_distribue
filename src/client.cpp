@@ -39,6 +39,7 @@ int execute_cmd(commande cmd, Cloud* cloud, char* cloud_json, Reservation* reser
         semop(semid, &verrouP, 1);
         if (check_commande(cloud, cmd) == -1) {
             cout << "Non disponible faut le mettre en attente" << endl;
+            //semop(semid, &verrouV, 1);
             return 0;
         } else cout << "Allocation possible" << endl;
         
