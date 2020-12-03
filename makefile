@@ -113,7 +113,7 @@ init:
 
 tar : 
 	@echo "$(LGREENCOLOR)| Creating $(ARCHIVE_NAME).tar.gz:    $(ENDCOLOR)$(LYELLOWCOLOR)$^$(ENDCOLOR)"
-	@tar -czvf $(ARCHIVE_NAME).tar.gz makefile $(SRC) $(INC)
+	@tar -czvf $(ARCHIVE_NAME).tar.gz makefile $(SRC) $(INC) lib conf README.md
 zip : 
 	@echo "$(LGREENCOLOR)| Creating $(ARCHIVE_NAME).zip:    $(ENDCOLOR)$(LYELLOWCOLOR)$^$(ENDCOLOR)"
-	@zip -r $(ARCHIVE_NAME).zip makefile $(SRC) $(INC)
+	@zip -r $(ARCHIVE_NAME).zip makefile $(SRC) $(INC) lib conf README.md
