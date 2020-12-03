@@ -41,11 +41,12 @@ Resource* get_resource_by_id(Reservation* res, int id) {
     return res->resources + id;
 }
 
-void print_resevation(Reservation* reservation) {
+void print_reservation(Reservation* reservation) {
+    cout << "Les reservation de " << reservation->client.name << " : " << endl;
     for(int i= 0; i < reservation->number_server; i++) {
         int cpu = reservation->resources[i].cpu, mem = reservation->resources[i].memory;
         if (cpu > 0 || mem > 0)
-            cout << reservation->name[i] << ": {.cpu: " << cpu << ", .memory: " << mem << "}" << endl;
+            cout << '\t' << reservation->name[i] << ": {.cpu: " << cpu << ", .memory: " << mem << "}" << endl;
     }
 }
 
@@ -65,16 +66,3 @@ Resource free_reservation(Reservation* res,char* server_name) {
     to_modify->memory = 0;
     return resource;
 }
-
-void print_reservation(Reservation* res) {
-    cout << "Les reservation de " << res->client.name << " : " << endl;
-    for (int i = 0; i < res->number_server; i++) {
-        cout << "{ 'name': '" << res->name[i] << "', 'cpu': " << res->resources[i].cpu << ", 'memory': " << res->resources[i].memory << "} ";
-    }
-    cout << endl;
-    return;
-}
-
-/*/-------------------
-
-*/

@@ -24,7 +24,7 @@ Resource* get_resource_by_server_name(Reservation*, char* name_server);
 
 Resource* get_resource_by_id(Reservation*, int id);
 
-void print_resevation(Reservation*);
+void print_reservation(Reservation*);
 
 /* 
     Ajout d'une ressource au tableau de ressources donnée en param
@@ -37,6 +37,5 @@ Reservation* save_reservation(Reservation*, Resource, char*);
  */
 Resource free_reservation(Reservation*, char*);
 
-void print_reservation(Reservation*);
 
 #endif

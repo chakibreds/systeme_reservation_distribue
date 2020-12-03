@@ -122,14 +122,11 @@ int rm_site(Cloud* cloud, int i) {
 
 int check_commande(Cloud* cloud, commande cmd) {
     if(cloud == NULL || cloud->sites == NULL) return -1;
-    cout << cmd.nb_server << endl;;
     for (int i = 0; i < cmd.nb_server; i++) {
         int cpu = cmd.cpu[i], mem = cmd.memory[i];
         char* server_name = cmd.server_name[i];
-        cout << server_name << " DEB" << endl;
         Site* site = get_site_by_name(cloud, server_name);
         if (site == NULL || get_cpu_available(site) < cpu || get_memory_available(site) < mem) return -1;
-        cout << server_name << " FIN" << endl;
     }
     return 0;
 }
