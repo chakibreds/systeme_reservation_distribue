@@ -38,13 +38,6 @@ int execute_cmd(commande cmd, Reservation* reservation) {
     if (cmd.cmd_type == CMD_ALLOC_WITH_NAMES) {
         cout << "CMD_ALLOC_WITH_NAMES" << endl;
         semop(semid, &verrouP, 1);
-<<<<<<< HEAD
-        if (check_commande(cloud, cmd) == -1) {
-            cout << "Non disponible faut le mettre en attente" << endl;
-            //semop(semid, &verrouV, 1);
-            return 0;
-        } else cout << "Allocation possible" << endl;
-=======
         while (check_commande(cloud, cmd) == -1) {
             cout << "mise en attente" << endl;
             semop(semid, &verrouV, 1);
@@ -53,7 +46,6 @@ int execute_cmd(commande cmd, Reservation* reservation) {
             destroy_cloud(cloud);
             cloud = decode_cloud(cloud_json,MAX_LEN_BUFFER_JSON);
         }
->>>>>>> abe2de7d13975427f63cb892bc53331294387a65
         
         for (int i = 0; i < cmd.nb_server; i++) {
             if (reserve_resources(cloud, reservation, cmd.server_name[i], {.cpu = cmd.cpu[i], .memory = cmd.memory[i]}) == -1) {cerr << "Impossible d'allouer " << cmd.server_name[i] << endl;} else cout << "Allocation de " << cmd.server_name[i] << endl;
