@@ -7,24 +7,89 @@
 #include <sys/sem.h>
 #include <unistd.h>
 #include <signal.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h> // htons
+#include <string.h>
 
 #include "../inc/site.hpp"
 #include "../inc/cloud.hpp"
 #include "../inc/reservation.hpp"
 #include "../inc/define.hpp"
 
-
 using namespace std;
 
+struct recv
+{
+    int ds_client;
+    char msg[MAX_LEN_BUFFER_JSON];
+    int size_msg;
+};
+
+int sendTCP(int socket, const char *buffer, size_t length)
+{
+    int sent = 0;
+    int total = 0;
+    while (total < (int)length)
+    {
+        sent = send(socket, buffer + total, length - total, 0);
+        if (sent <= 0)
+            return sent;
+        total += sent;
+    }
+    return total;
+}
+
+int recvTCP(int socket, char *buffer, size_t length)
+{
+    int received = 0, total = 0;
+    do
+    {
+        received = recv(socket, buffer + total, length - total, 0);
+        if (received <= 0)
+            return received;
+        total += received;
+    } while (buffer[total - 1] != '\0');
+    return total;
+}
 
 //------ Variables globales de clients
 int semid;
 int shmid;
-char* cloud_json;
-Cloud* cloud;
-Reservation* reservation;
+char *cloud_json;
+Cloud *cloud;
+Reservation *reservation;
+void *listen_modif(void *params)
+{
 
-struct sembuf verrouP = {.sem_num = 0, .sem_op = -1, .sem_flg = 0};
+    struct recv *r = (struct recv *)params;
+    int s = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    if (s != 0)
+        cerr << "Can't set cancel state" << endl;
+    s = pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+    while (1)
+    {
+        
+        int rcv = recvTCP(r->ds_client, r->msg, sizeof(r->msg));
+        if (rcv == -1)
+        {
+            perror("Error recv:");
+            break;
+        }
+        else if (rcv == 0)
+        {
+            printf("< Message vide!\n");
+            break;
+        }
+        else
+        {
+            cloud = decode_cloud(cloud_json,MAX_LEN_BUFFER_JSON);
+            print_cloud(cloud);
+        }
+    }
+    return NULL;
+}
+/* struct sembuf verrouP = {.sem_num = 0, .sem_op = -1, .sem_flg = 0};
 
 struct sembuf verrouV = {.sem_num = 0, .sem_op = 1, .sem_flg = 0};
 
@@ -103,7 +168,7 @@ int execute_cmd(commande cmd, Reservation* reservation) {
 }
 
 
-/* premier thread attends une modification pour afficher */
+/* premier thread attends une modification pour afficher 
 void* wait_thread(void* params) {
     int s = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     if (s != 0)
@@ -122,7 +187,7 @@ void* wait_thread(void* params) {
         cout << "> ";
         semop(semid, &verrouV, 1);
     }
-}
+}*/
 
 /* 
     Ce programme se connecte au serveur puis 
@@ -132,7 +197,7 @@ void* wait_thread(void* params) {
 int main(int argc, char const *argv[])
 {
 
-    if (argc != 3) {
+    /*  if (argc != 3) {
         cerr << "Usage: "<< argv[0] <<" chemin_vers_fichier_ipc id" << endl;
         exit(1);
     }
@@ -155,18 +220,47 @@ int main(int argc, char const *argv[])
     if (cloud_json == (void*)-1) {
         perror("erreur shmat");
         exit(1);
+    } */
+
+    if (argc != 3)
+    {
+        fprintf(stderr, "Usage: %s ip_address port\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+    const char *ip_address = argv[1], *port = argv[2];
+
+    int ds = socket(PF_INET, SOCK_STREAM, 0);
+    if (ds == -1)
+    {
+        perror("Error socket:"),
+            exit(1);
+    }
+
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    if (inet_pton(AF_INET, ip_address, &addr.sin_addr.s_addr) == -1)
+    {
+        perror("Error converting ip_address:");
+        exit(EXIT_FAILURE);
+    }
+    addr.sin_port = htons((short)atoi(port));
+
+    if (connect(ds, (struct sockaddr *)&addr, sizeof(addr)) == -1)
+    {
+        perror("Error connecting server:");
+        exit(EXIT_FAILURE);
     }
 
     Client client;
-    client.id = atoi(argv[2]);
-    client.port = 34000;
-    strcpy(client.ip_address, "127.0.0.1");
+    client.id = 1;
+    client.port = atoi(port);
+    strcpy(client.ip_address, ip_address);
     cout << "entrez votre nom svp : ";
-    fgets(client.name, MAX_LEN_NAME_CLIENT,stdin);
-    client.name[strlen(client.name)-1]='\0';
+    fgets(client.name, MAX_LEN_NAME_CLIENT, stdin);
+    client.name[strlen(client.name) - 1] = '\0';
     cout << "vous êtes : " << client.name << " et votre id est : " << client.id << endl;
-    
-    semop(semid, &verrouP, 1);
+
+    /* semop(semid, &verrouP, 1);
     cloud = decode_cloud(cloud_json,MAX_LEN_BUFFER_JSON);
     reservation = init_reservation(cloud, client);
     semop(semid, &verrouV, 1);
@@ -176,15 +270,48 @@ int main(int argc, char const *argv[])
     if (pthread_create(&thread_id, NULL, wait_thread, NULL) != 0) {
         cerr << "Can't create the waiting thread" << endl;
         return 1;
-    }
+    } */
     fflush(stdin);
-    while (1) {
-        cout << endl << "> ";
+    pthread_t thread_id;
+    struct recv r;
+    r.ds_client = ds;
+    if (pthread_create(&thread_id, NULL, listen_modif, (void *)&r) != 0)
+    {
+        cerr << "Can't create the waiting thread" << endl;
+        return 1;
+    }
+    while (1)
+    {
+        cout << endl
+             << "> ";
         char in_buffer[100];
-        fgets(in_buffer,100,stdin);
-        in_buffer[strlen(in_buffer)-1]='\0';
-         
-        commande cmd = interpret_cmd(in_buffer);
+        fgets(in_buffer, 100, stdin);
+        in_buffer[strlen(in_buffer) - 1] = '\0';
+
+        if (sendTCP(ds, in_buffer, sizeof(in_buffer)) == -1)
+        {
+            perror("Can't send the message:");
+            break;
+        }
+        in_buffer[0] = '\0';
+        int rcv = recvTCP(ds, in_buffer, sizeof(in_buffer));
+        if (rcv == -1)
+        {
+            perror("Error recv:");
+            break;
+        }
+        else if (rcv == 0)
+        {
+            printf("< Message vide!\n");
+            break;
+        }
+        else
+        {
+            in_buffer[rcv] = '\0';
+            printf("< %s\n", in_buffer);
+        }
+
+        /* commande cmd = interpret_cmd(in_buffer);
         
         if (execute_cmd(cmd, reservation) == -1)
             cerr << "Erreur à l'éxecution de la commande" << endl;
@@ -193,15 +320,13 @@ int main(int argc, char const *argv[])
     }
     
     //free all
-    semop(semid, &verrouP, 1);
-    if (pthread_cancel(thread_id) != 0) cerr << "Impossible de terminer le thread" << endl;
-   
+     */
+        if (pthread_cancel(thread_id) != 0)
+            cerr << "Impossible de terminer le thread" << endl;
 
-    
-    if(pthread_join(thread_id,NULL) != 0)
-        cout << "impossible de joiner" << endl;
-    
-    semop(semid, &verrouV, 1); 
+        if (pthread_join(thread_id, NULL) != 0)
+            cout << "impossible de joiner" << endl;
+    }
 
     return 0;
 }
