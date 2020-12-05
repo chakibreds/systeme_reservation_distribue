@@ -104,6 +104,8 @@ int waiting_for_client(int ds, int nb_client, struct sockaddr *addr_client, sock
         perror("Erreur accept:");
         exit(EXIT_FAILURE);
     }
+
+    cout << "client connecté" << endl;
     return ds_client;
 }
 
@@ -211,7 +213,7 @@ void *wait_thread(void *params)
         if (size_str == -1)
         {
             cerr << "Impossible de coder le cloud" << endl;
-            return 1;
+            return NULL;
         }
 
         /*   system("clear");
@@ -219,12 +221,13 @@ void *wait_thread(void *params)
         print_reservation(reservation);
         cout << "> "; */
         strcpy(r->msg, cloud_json);
-        r->msg[strlen(r->msg) - 1] = '\0';
+        //r->msg[strlen(r->msg) - 1] = '\0';
         if (sendTCP(r->ds_client, r->msg, strlen(r->msg) + 1) == -1)
         {
             perror("Can't send the message:");
             break;
         }
+       
         semop(semid, &verrouV, 1);
     }
     return NULL;
@@ -232,6 +235,12 @@ void *wait_thread(void *params)
 
 int manage_user(int ds, int ds_client, struct sockaddr_in addr_client, socklen_t socklen, int port, struct recv *r)
 {
+    cloud_json = (char *)shmat(shmid, NULL, 0);
+    if (cloud_json == (void *)-1)
+    {
+        perror("erreur shmat");
+        exit(1);
+    }
     Client client;
     client.id = ++id;
     client.port = port;
@@ -241,19 +250,19 @@ int manage_user(int ds, int ds_client, struct sockaddr_in addr_client, socklen_t
     client.name[strlen(client.name)-1]='\0';
     cout << "vous êtes : " << client.name << " et votre id est : " << client.id << endl;
      */
+
     semop(semid, &verrouP, 1);
     cloud = decode_cloud(cloud_json, MAX_LEN_BUFFER_JSON);
+    if (cloud == NULL)
+    {
+        cerr << "cloud NULL" << endl;
+    }
     reservation = init_reservation(cloud, client);
     semop(semid, &signalP, 1);
     semop(semid, &signalV, 1);
+
     semop(semid, &verrouV, 1);
 
-    pthread_t thread_id;
-    if (pthread_create(&thread_id, NULL, wait_thread, (void *)&r) != 0)
-    {
-        cerr << "Can't create the waiting thread" << endl;
-        return 1;
-    }
     fflush(stdin);
     while (1)
     {
@@ -271,8 +280,9 @@ int manage_user(int ds, int ds_client, struct sockaddr_in addr_client, socklen_t
         // attente d'une commande de la part du Client
         char *in_buffer = (char *)malloc(500 * sizeof(char));
         in_buffer[0] = '\0';
-        // attente d'un message de iencli1
+        // attente d'un message de
         int rcv = recvTCP(ds_client, in_buffer, 500);
+        cout << "'" << in_buffer << "'" << endl;
         if (rcv == -1)
         {
             perror("Error recv:");
@@ -309,14 +319,6 @@ int manage_user(int ds, int ds_client, struct sockaddr_in addr_client, socklen_t
     }
 
     //free all
-    semop(semid, &verrouP, 1);
-    if (pthread_cancel(thread_id) != 0)
-        cerr << "Impossible de terminer le thread" << endl;
-
-    if (pthread_join(thread_id, NULL) != 0)
-        cout << "impossible de joiner" << endl;
-
-    semop(semid, &verrouV, 1);
     return 0;
 }
 
@@ -340,14 +342,13 @@ int main(int argc, char const *argv[])
         exit(1);
     }
     //initialistation de la shared memory
-    int shmid;
     if ((shmid = shmget(cle, sizeof(char) * MAX_LEN_BUFFER_JSON, IPC_CREAT | 0666)) == -1)
     {
         perror("erreur shmget");
         exit(1);
     }
 
-    Cloud *cloud = init_cloud_json(argv[2]);
+    cloud = init_cloud_json(argv[2]);
     if (cloud == NULL)
     {
         cerr << "Impossible de créer le Cloud" << endl;
@@ -370,7 +371,6 @@ int main(int argc, char const *argv[])
 
     //shmdt((void *)cloud_json);
     // init semaphore;
-    int semid;
     if ((semid = semget(cle, 2, IPC_CREAT | 0666)) == -1)
     {
         perror("erreur semget");
@@ -386,9 +386,8 @@ int main(int argc, char const *argv[])
     }
     id = -1;
     cout << "****** Initialisation terminée ******" << endl;
-    cout << "En attente des clients..." << endl;
-
     int ds = init_socket(argv[3]);
+    cout << "En attente des clients..." << endl;
 
     while (1)
     {
@@ -405,9 +404,27 @@ int main(int argc, char const *argv[])
         else if (fork_return == 0)
         {
             // new process
+            cout << "fils traitant le client" << endl;
             struct recv r;
             r.ds_client = ds_client;
-            return manage_user(ds, ds_client, addr_client, socklen, atoi(argv[3]), &r);
+            pthread_t thread_id;
+            if (pthread_create(&thread_id, NULL, wait_thread, (void *)&r) != 0)
+            {
+                cerr << "Can't create the waiting thread" << endl;
+                return 1;
+            }
+            if (manage_user(ds, ds_client, addr_client, socklen, atoi(argv[3]), &r) != 0)
+            {
+                cerr<< "erreur manage_user"<<endl;
+            }
+            semop(semid, &verrouP, 1);
+            if (pthread_cancel(thread_id) != 0)
+                cerr << "Impossible de terminer le thread" << endl;
+
+            if (pthread_join(thread_id, NULL) != 0)
+                cout << "impossible de joiner" << endl;
+
+            semop(semid, &verrouV, 1);
         }
         else
         {
