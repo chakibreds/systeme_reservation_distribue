@@ -136,3 +136,19 @@ commande interpret_cmd(char* cmd_str) {
         return cmd;
     }
 }
+
+int execute_cmd_client(commande cmd)
+{
+    if (cmd.cmd_type == CMD_ALLOC_WITH_NAMES || cmd.cmd_type == CMD_ALLOC_ALL || cmd.cmd_type == CMD_FREE_WITH_NAMES  || cmd.cmd_type == CMD_FREE_ALL || cmd.cmd_type == CMD_EXIT) {
+        return 0;
+    } else if (cmd.cmd_type == CMD_HELP) {
+        cout << "alloc cpu mem:                   Allouer'cpu' cpu et 'mem' memory sur n'importe quel serveur" << endl;
+        cout << "alloc (server_name cpu mem)+...: Allouer 'cpu' cpu et 'mem' memory sur le serveur 'server_name'" << endl;
+        cout << "free (server_name)*:             Libérer tous ce qui a été alloué sur les serveurs spécifiés" << endl;
+        cout << "free:                            Libérer toutes les ressources reserver." << endl;
+        cout << "exit:                            Quitter proprement" << endl;
+        return 0;
+    } else {
+        return -1;
+    }
+}

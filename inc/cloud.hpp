@@ -26,6 +26,7 @@ typedef struct {
     int nb_server;
 } commande;
 
+
 /* 
     struct Ressource:
         Une instance de ressources represente plusieurs sites géographiquement distribués
@@ -35,6 +36,8 @@ typedef struct {
     Site** sites;
     int size;
 } Cloud;
+
+commande* init_commande(Cloud* cloud);
 
 /* 
     Création d'une structure Cloud à partir d'un fichier json
@@ -77,7 +80,7 @@ Site* get_site_by_name(Cloud*, char*);
  */
 int rm_site(Cloud*, int pos);
 
-int check_commande(Cloud*, commande);
+int check_commande(Cloud*, commande*);
 
 /* 
     Affiche un cloud

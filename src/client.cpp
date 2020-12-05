@@ -7,51 +7,15 @@
 #include <sys/sem.h>
 #include <unistd.h>
 #include <signal.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h> // htons
 #include <string.h>
 
 #include "../inc/site.hpp"
 #include "../inc/cloud.hpp"
 #include "../inc/reservation.hpp"
 #include "../inc/define.hpp"
+#include "../inc/protocol.hpp"
 
 using namespace std;
-
-struct recv
-{
-    int ds_client;
-    char msg[MAX_LEN_BUFFER_JSON];
-    int size_msg;
-};
-
-int sendTCP(int socket, const char *buffer, size_t length)
-{
-    int sent = 0;
-    int total = 0;
-    while (total < (int)length)
-    {
-        sent = send(socket, buffer + total, length - total, 0);
-        if (sent <= 0)
-            return sent;
-        total += sent;
-    }
-    return total;
-}
-
-int recvTCP(int socket, char *buffer, size_t length)
-{
-    int received = 0, total = 0;
-    do
-    {
-        received = recv(socket, buffer + total, length - total, 0);
-        if (received <= 0)
-            return received;
-        total += received;
-    } while (buffer[total - 1] != '\0');
-    return total;
-}
 
 //------ Variables globales de clients
 Cloud *cloud;
@@ -66,8 +30,9 @@ void *listen_modif(void *params)
     s = pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
     while (1)
     {
-        
-        int rcv = recvTCP(r->ds_client, r->msg, sizeof(r->msg));
+        cout<< "Thread: attente" <<endl;
+        int rcv = recvTCP(r->ds_client, r->msg, strlen(r->msg));
+        cout<< "Thread: rcv" <<endl;
         if (rcv == -1)
         {
             perror("Error recv:");
@@ -80,9 +45,15 @@ void *listen_modif(void *params)
         }
         else
         {
-            cout << r->msg << endl;
-            cloud = decode_cloud(r->msg,MAX_LEN_BUFFER_JSON);
-            print_cloud(cloud);
+            if (r->msg != NULL && strlen(r->msg) > 0 && r->msg[0] == '[' && r->msg[strlen(r->msg)-1] == ']') {
+                cout << "Thread: Msg recu '" << r->msg << "'" << endl;
+                cloud = decode_cloud(r->msg,MAX_LEN_BUFFER_JSON);
+                print_cloud(cloud);
+            } else if (r->msg != NULL) {
+                cout << "< " << r->msg << endl;
+            } else {
+                cerr << "R->msg == NULL" << endl;
+            }
         }
     }
     return NULL;
@@ -111,40 +82,8 @@ int main(int argc, char const *argv[])
     client.name[strlen(client.name) - 1] = '\0';
     cout << "vous êtes : " << client.name << " et votre id est : " << client.id << endl;
 
-    int ds = socket(PF_INET, SOCK_STREAM, 0);
-    if (ds == -1)
-    {
-        perror("Error socket:"),
-            exit(1);
-    }
+    int ds = init_socket_client(ip_address, port);
 
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    if (inet_pton(AF_INET, ip_address, &addr.sin_addr.s_addr) == -1)
-    {
-        perror("Error converting ip_address:");
-        exit(EXIT_FAILURE);
-    }
-    addr.sin_port = htons((short)atoi(port));
-
-    if (connect(ds, (struct sockaddr *)&addr, sizeof(addr)) == -1)
-    {
-        perror("Error connecting server:");
-        exit(EXIT_FAILURE);
-    }
-
- 
-    /* semop(semid, &verrouP, 1);
-    cloud = decode_cloud(cloud_json,MAX_LEN_BUFFER_JSON);
-    reservation = init_reservation(cloud, client);
-    semop(semid, &verrouV, 1);
-    print_cloud(cloud);
-
-    pthread_t thread_id;
-    if (pthread_create(&thread_id, NULL, wait_thread, NULL) != 0) {
-        cerr << "Can't create the waiting thread" << endl;
-        return 1;
-    } */
     fflush(stdin);
     pthread_t thread_id;
     struct recv r;
@@ -162,37 +101,27 @@ int main(int argc, char const *argv[])
         in_buffer[499] = '\0';
         fgets(in_buffer, 500, stdin);
         in_buffer[strlen(in_buffer) - 1] = '\0';
-
-        if (sendTCP(ds, in_buffer, sizeof(in_buffer)) == -1)
-        {
-            perror("Can't send the message:");
-            break;
+    
+        commande cmd = interpret_cmd(in_buffer);
+        
+        if (execute_cmd_client(cmd) == -1) {
+            cerr << "Erreur à l'éxecution de la commande" << endl;
+            continue;
         }
         
+        if (cmd.cmd_type == CMD_HELP) continue;
+
+        if (sendCommandeTCP(ds, &cmd) == -1) {perror("Can't send the message:");break;}
+
+        if (cmd.cmd_type == CMD_EXIT) break;
+        
         in_buffer[0] = '\0';
-        int rcv = recvTCP(ds, in_buffer, sizeof(in_buffer));
-        if (rcv == -1)
-        {
-            perror("Error recv:");
-            break;
-        }
-        else if (rcv == 0)
-        {
-            printf("< Message vide!\n");
-            break;
-        }
-        else
-        {
-            in_buffer[rcv] = '\0';
-            printf("< %s\n", in_buffer);
-        }
-
     }
-        if (pthread_cancel(thread_id) != 0)
-            cerr << "Impossible de terminer le thread" << endl;
+    if (pthread_cancel(thread_id) != 0)
+        cerr << "Impossible de terminer le thread" << endl;
 
-        if (pthread_join(thread_id, NULL) != 0)
-            cout << "impossible de joiner" << endl;
+    if (pthread_join(thread_id, NULL) != 0)
+        cerr << "impossible de joindre" << endl;
 
     return 0;
 }

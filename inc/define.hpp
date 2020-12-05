@@ -25,6 +25,6 @@ commande interpret_cmd(char* cmd);
 /* 
     @return -1 if error
  */
-int execute_cmd(commande, Cloud*, char* cloud_json, Reservation*);
+int execute_cmd_client(commande);
 
 #endif
