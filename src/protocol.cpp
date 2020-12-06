@@ -96,7 +96,7 @@ int sendTCP(int socket, const char *buffer, int length)
 int recvTCP(int socket, char *buffer, int length)
 {
     int received = 0, total = 0;
-    if (recv(socket, &length, sizeof(int),0) < 0) {perror("Error snd:");exit(EXIT_FAILURE);}
+    if (recv(socket, &length, sizeof(int),0) < 0) {perror("Error rcv:");exit(EXIT_FAILURE);}
     while(total < (int)length)
     {
         received = recv(socket, buffer + total, length - total, 0);

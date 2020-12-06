@@ -9,14 +9,17 @@ using namespace std;
 
 Reservation* init_reservation(Cloud* cloud, Client client) {
     Reservation* res = (Reservation*) malloc(sizeof(Reservation));
+    if (cloud != NULL)
+    {    
     res->resources = (Resource*) malloc(sizeof(Resource) * cloud->size);
     res->name = (char**) malloc(sizeof(char*) * cloud->size);
-    for (int i = 0 ; i < cloud->size; i++) {
-        res->name[i] = (char*) malloc(sizeof(char) * MAX_LEN_NAME_SITE);
-        strcpy(res->name[i], cloud->sites[i]->name);
+        for (int i = 0 ; i < cloud->size; i++) {
+            res->name[i] = (char*) malloc(sizeof(char) * MAX_LEN_NAME_SITE);
+            strcpy(res->name[i], cloud->sites[i]->name);
+        }
+        res->number_server = cloud->size;
+        res->client = client;
     }
-    res->number_server = cloud->size;
-    res->client = client;
     return res;
 }
 
@@ -41,12 +44,25 @@ Resource* get_resource_by_id(Reservation* res, int id) {
     return res->resources + id;
 }
 
-void print_reservation(Reservation* reservation) {
-    cout << "Les reservation de " << reservation->client.name << " : " << endl;
+void print_reservation(Reservation* reservation,char* str_reservation) {
+    strcpy(str_reservation,"");
+    char str[10];
+    str[0]='\0';
+    strcat(str_reservation,"Vos reservations");
+    strcat(str_reservation," : \n");
     for(int i= 0; i < reservation->number_server; i++) {
         int cpu = reservation->resources[i].cpu, mem = reservation->resources[i].memory;
         if (cpu > 0 || mem > 0)
-            cout << '\t' << reservation->name[i] << ": {.cpu: " << cpu << ", .memory: " << mem << "}" << endl;
+        {
+            strcat(str_reservation,"\t"); strcat(str_reservation,reservation->name[i]); 
+            strcat(str_reservation,": {.cpu: ");
+            sprintf(str,"%d",cpu);
+            strcat(str_reservation,str); 
+            strcat(str_reservation,", .memory: "); 
+            sprintf(str,"%d",mem);
+            strcat(str_reservation,str); 
+            strcat(str_reservation,"}\n" );
+        }
     }
 }
 

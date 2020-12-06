@@ -40,6 +40,10 @@ struct sembuf signalP = {.sem_num = 1, .sem_op = -1, .sem_flg = 0};
 struct sembuf signalV = {.sem_num = 1, .sem_op = 1, .sem_flg = 0};
 struct sembuf signalZ = {.sem_num = 1, .sem_op = 0, .sem_flg = 0};
 
+struct sembuf signalRdP = {.sem_num = 1, .sem_op = -1, .sem_flg = 0};
+struct sembuf signalRdV = {.sem_num = 1, .sem_op = 1, .sem_flg = 0};
+struct sembuf signalRdZ = {.sem_num = 1, .sem_op = 0, .sem_flg = 0};
+
 char *execute_cmd(commande* cmd, Reservation *reservation, char* res)
 {
     strcpy(res, "");
@@ -114,7 +118,7 @@ char *execute_cmd(commande* cmd, Reservation *reservation, char* res)
 /* premier thread attends une modification pour afficher */
 void *wait_thread(void *params)
 {
-    struct recv *r = (struct recv *)params;
+    struct recv_msg *r = (struct recv_msg *)params;
     int s = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     if (s != 0)
         cerr << "Can't set cancel state" << endl;
@@ -144,6 +148,11 @@ void *wait_thread(void *params)
                     perror("Can't send the message:");
                     break;
                 }
+                print_reservation(reservation,r->msg);
+                if ((sendTCP(r->ds_client, r->msg, strlen(r->msg) + 1) == -1)) {
+                    perror("Can't send the message:");
+                    break;
+                }
             }
         } else {
             cerr << "Réception d'un cloud_json vide : " << (cloud_json==NULL?"null":"notnull") << endl;
@@ -155,8 +164,15 @@ void *wait_thread(void *params)
         if ((*n_threads_courant) >= (*n_threads_concurant)) {
             semop(semid, &signalV, 1);
             (*n_threads_courant) = 0;
+            semop(semid,&signalRdP,1);
+            semop(semid,&signalRdV,1);
+            semop(semid, &rendezvousV, 1);
         }
-        semop(semid, &rendezvousV, 1);
+        else 
+        {
+            semop(semid, &rendezvousV, 1);
+            semop(semid,&signalRdZ,1);
+        }
     }
     return NULL;
 }
@@ -197,7 +213,8 @@ int manage_user(int ds_client, int port)
 
         if (strcmp(in_buffer, "") == 0)
             strcpy(in_buffer, "Erreur à l'éxecution de la commande");
-
+        if (cmd->cmd_type == CMD_EXIT)
+            break;
         semop(semid, &verrouP, 1);
         if (sendTCP(ds_client, in_buffer, strlen(in_buffer)) == -1){perror("Can't send the message:");break;}
         semop(semid, &verrouV, 1);
@@ -265,16 +282,18 @@ int main(int argc, char const *argv[])
 
     //shmdt((void *)cloud_json);
     // init semaphore;
-    if ((semid = semget(IPC_PRIVATE, 3, IPC_CREAT | 0666)) == -1)
+    if ((semid = semget(IPC_PRIVATE, 4, IPC_CREAT | 0666)) == -1)
     {
         perror("erreur semget");
         exit(1);
     }
     semun ctrl;
-    ctrl.array = (unsigned short *)malloc(3 * sizeof(unsigned short));
+    ctrl.array = (unsigned short *)malloc(4 * sizeof(unsigned short));
     ctrl.array[0] = 1;
     ctrl.array[1] = 1;
     ctrl.array[2] = 1;
+    ctrl.array[3] = 1;
+
     if (semctl(semid, 0, SETALL, ctrl) == -1)
     {
         perror("erreur init sem");
@@ -312,7 +331,7 @@ int main(int argc, char const *argv[])
         {
             // new process
             cout << "fils traitant le client" << endl;
-            struct recv r;
+            struct recv_msg r;
             r.ds_client = ds_client;
             n_threads_concurant = (int*)shmat(shm_concurant, NULL, 0);
             n_threads_courant = (int*)shmat(shm_courant, NULL, 0);
@@ -333,14 +352,19 @@ int main(int argc, char const *argv[])
             {
                 cerr<< "erreur manage_user"<<endl;
             }
+            cout << "manage fini"<<endl;
             semop(semid, &verrouP, 1);
             if (pthread_cancel(thread_id) != 0)
                 cerr << "Impossible de terminer le thread" << endl;
 
             if (pthread_join(thread_id, NULL) != 0)
                 cout << "impossible de joiner" << endl;
-
+            close(ds_client);
+            semop(semid, &rendezvousP, 1);
+            (*n_threads_concurant) -= 1;
+            semop(semid, &rendezvousV, 1);
             semop(semid, &verrouV, 1);
+
         }
         else
         {

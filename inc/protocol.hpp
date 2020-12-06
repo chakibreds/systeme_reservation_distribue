@@ -3,7 +3,7 @@
 
 #include "cloud.hpp"
 
-struct recv
+struct recv_msg
 {
     int ds_client;
     char msg[MAX_LEN_BUFFER_JSON];

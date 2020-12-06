@@ -1,6 +1,5 @@
 #include <iostream>
 #include <stdio.h>
-#include <string.h>
 #include <pthread.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
@@ -8,6 +7,10 @@
 #include <unistd.h>
 #include <signal.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
+
 
 #include "../inc/site.hpp"
 #include "../inc/cloud.hpp"
@@ -19,21 +22,18 @@ using namespace std;
 
 //------ Variables globales de clients
 Cloud *cloud;
-Reservation *reservation;
 void *listen_modif(void *params)
 {
 
-    struct recv *r = (struct recv *)params;
+    struct recv_msg *r = (struct recv_msg *)params;
     int s = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     if (s != 0)
         cerr << "Can't set cancel state" << endl;
     s = pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
     while (1)
     {
-        cout<< "Thread: attente" <<endl;
         int rcv = recvTCP(r->ds_client, r->msg, strlen(r->msg));
         r->msg[rcv] = '\0';
-        cout<< "Thread: rcv" <<endl;
         if (rcv == -1)
         {
             perror("Error recv:");
@@ -50,7 +50,7 @@ void *listen_modif(void *params)
                 system("clear");
                 cloud = decode_cloud(r->msg,MAX_LEN_BUFFER_JSON);
                 print_cloud(cloud);
-                print_reservation(reservation);
+
             } else if (r->msg != NULL) {
                 cout << "< " << r->msg << endl;
             } else {
@@ -85,11 +85,10 @@ int main(int argc, char const *argv[])
     cout << "vous êtes : " << client.name << " et votre id est : " << client.id << endl;
 
     int ds = init_socket_client(ip_address, port);
-    reservation = init_reservation(cloud, client);
 
     fflush(stdin);
     pthread_t thread_id;
-    struct recv r;
+    struct recv_msg r;
     r.ds_client = ds;
     if (pthread_create(&thread_id, NULL, listen_modif, (void *)&r) != 0)
     {
@@ -107,7 +106,7 @@ int main(int argc, char const *argv[])
     
         commande cmd = interpret_cmd(in_buffer);
         
-        if (execute_cmd_client(&cmd, reservation, cloud) == -1) {
+        if (execute_cmd_client(&cmd) == -1) {
             cerr << "Erreur à l'éxecution de la commande" << endl;
             continue;
         }
@@ -120,11 +119,17 @@ int main(int argc, char const *argv[])
         
         in_buffer[0] = '\0';
     }
+
+    char buffer[10];
+    if (recv(ds,buffer,10,0) == 0)
+    {
+        cout << "deconnexion"<<endl;
+    }
+    
     if (pthread_cancel(thread_id) != 0)
         cerr << "Impossible de terminer le thread" << endl;
 
     if (pthread_join(thread_id, NULL) != 0)
         cerr << "impossible de joindre" << endl;
-
     return 0;
 }

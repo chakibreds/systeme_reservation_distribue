@@ -25,6 +25,6 @@ commande interpret_cmd(char* cmd);
 /* 
     @return -1 if error
  */
-int execute_cmd_client(commande*,Reservation*, Cloud*);
+int execute_cmd_client(commande*);
 
 #endif
