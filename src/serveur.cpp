@@ -118,7 +118,6 @@ void *wait_thread(void *params)
 
         semop(semid, &signalZ, 1);
         semop(semid, &verrouP, 1);
-        cout << "Threads " << pthread_self() <<": " << cloud_json << endl;
 
         if (cloud_json != NULL && strlen(cloud_json) > 0 && cloud_json[0] == '[' && cloud_json[strlen(cloud_json)-1] == ']') {
 
@@ -175,16 +174,13 @@ int manage_user(int ds_client, int port)
     {
         char in_buffer[100];
         int rcv = recvCommandeTCP(ds_client, cmd);
-        if (rcv == -1){perror("Error recv:");break;} else {cout << "Message recu : "<< cmd->cmd_type << endl;}
-
+        if (rcv == -1){perror("Error recv:");break;} 
         execute_cmd(cmd, reservation, in_buffer);
-        cout << "JOUZ" << endl;
 
         if (strcmp(in_buffer, "") == 0)
             strcpy(in_buffer, "Erreur à l'éxecution de la commande");
 
         if (sendTCP(ds_client, in_buffer, strlen(in_buffer)) == -1){perror("Can't send the message:");break;}
-        cout << "Send '"<< in_buffer <<"' OK" << endl;
     }
     return 0;
 }
@@ -259,7 +255,6 @@ int main(int argc, char const *argv[])
         cerr << "Can't create the waiting thread" << endl;
         return 1;
     }
-    cout << "IDTHREADMAIN: " << thread_main << endl;
     cout << "****** Initialisation terminée ******" << endl;
     int ds = init_socket(argv[3]);
     cout << "En attente des clients..." << endl;

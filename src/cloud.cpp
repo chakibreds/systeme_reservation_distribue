@@ -140,16 +140,13 @@ int rm_site(Cloud* cloud, int i) {
 }
 
 int check_commande(Cloud* cloud, commande* cmd) {
-    cout << "Check commande" << endl;
     if(cloud == NULL || cloud->sites == NULL) return -1;
     for (int i = 0; i < cmd->nb_server; i++) {
         int cpu = cmd->cpu[i], mem = cmd->memory[i];
         char* server_name = cmd->server_name[i];
         Site* site = get_site_by_name(cloud, server_name);
         if (site == NULL || get_cpu_available(site) < cpu || get_memory_available(site) < mem) return -1;
-        cout << "cc" << i<<endl;
     }
-        cout << "fin cc"<<endl;
     return 0;
 }
 
