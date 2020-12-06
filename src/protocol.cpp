@@ -82,7 +82,6 @@ int sendTCP(int socket, const char *buffer, int length)
     int sent = 0;
     int total = 0;
     if (send(socket, &length, sizeof(int), 0) <= 0) {cerr<<"Error send"<<endl;exit(EXIT_FAILURE);}
-    cout << "envoi de " << length << "octets" << endl;
 
     while (total < (int)length)
     {
@@ -90,7 +89,6 @@ int sendTCP(int socket, const char *buffer, int length)
         if (sent <= 0)
             return sent;
         total += sent;
-        cout << "Boucle " << total << "/" << length << endl;
     }
     return total;
 }
@@ -99,36 +97,42 @@ int recvTCP(int socket, char *buffer, int length)
 {
     int received = 0, total = 0;
     if (recv(socket, &length, sizeof(int),0) < 0) {perror("Error snd:");exit(EXIT_FAILURE);}
-    cout << "reception de " << length << "octets" << endl;
     while(total < (int)length)
     {
         received = recv(socket, buffer + total, length - total, 0);
         if (received <= 0)
             return received;
         total += received;
-        cout << "Boucle " << total << "/" << length << endl;
     }
     return total;
 }
 
 int sendCommandeTCP(int socket, const commande *cmd) {
     if (sendTCP(socket,(const char*) &cmd->cmd_type, sizeof(cmd_t)) <= 0){cerr<<"Error send"<<endl;return -1;}
+    if (cmd->cmd_type == CMD_ALLOC_ALL || cmd->cmd_type == CMD_FREE_ALL || cmd->cmd_type == CMD_EXIT || cmd->cmd_type == CMD_ERR) {
+        return 0;
+    }
     if (sendTCP(socket,(const char*) &cmd->nb_server, sizeof(int)) <= 0){cerr<<"Error send"<<endl;return -1;}
-    cout << "snd nb server = " << cmd->nb_server << endl;
     for (int i = 0; i < cmd->nb_server; i++) {
-        if (sendTCP(socket,(const char*) &cmd->cpu[i], sizeof(int)) <= 0){cerr<<"Error send"<<endl;return -1;}
-        if (sendTCP(socket,(const char*) &cmd->memory[i], sizeof(int)) <= 0){cerr<<"Error send"<<endl;return -1;}
+        if (cmd->cmd_type != CMD_FREE_WITH_NAMES) {
+            if (sendTCP(socket,(const char*) &cmd->cpu[i], sizeof(int)) <= 0){cerr<<"Error send"<<endl;return -1;}
+            if (sendTCP(socket,(const char*) &cmd->memory[i], sizeof(int)) <= 0){cerr<<"Error send"<<endl;return -1;}
+        }
         if (sendTCP(socket,(const char*) cmd->server_name[i], MAX_LEN_NAME_SITE) <= 0){cerr<<"Error send"<<endl;return -1;}
     }
     return 0;
 }
 int recvCommandeTCP(int socket, commande *cmd) {
     if (recvTCP(socket,(char*) &cmd->cmd_type, sizeof(cmd_t)) <= 0){cerr<<"Error recv"<<endl;return -1;}
+    if (cmd->cmd_type == CMD_ALLOC_ALL || cmd->cmd_type == CMD_FREE_ALL || cmd->cmd_type == CMD_EXIT || cmd->cmd_type == CMD_ERR) {
+        return 0;
+    }
     if (recvTCP(socket,(char*) &cmd->nb_server, sizeof(int)) <= 0){cerr<<"Error recv"<<endl;return -1;}
-    cout << "rcv nb server = " << cmd->nb_server << endl;
     for (int i = 0; i < cmd->nb_server; i++) {
-        if (recvTCP(socket,(char*) &cmd->cpu[i], sizeof(int)) <= 0){cerr<<"Error recv"<<endl;return -1;}
-        if (recvTCP(socket,(char*) &cmd->memory[i], sizeof(int)) <= 0){cerr<<"Error recv"<<endl;return -1;}
+        if (cmd->cmd_type != CMD_FREE_WITH_NAMES) {
+            if (recvTCP(socket,(char*) &cmd->cpu[i], sizeof(int)) <= 0){cerr<<"Error recv"<<endl;return -1;}
+            if (recvTCP(socket,(char*) &cmd->memory[i], sizeof(int)) <= 0){cerr<<"Error recv"<<endl;return -1;}
+        }
         if (recvTCP(socket,(char*) cmd->server_name[i], sizeof(MAX_LEN_NAME_SITE)) <= 0){cerr<<"Error recv"<<endl;return -1;}
     }
     return 0;

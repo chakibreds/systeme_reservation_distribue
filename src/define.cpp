@@ -137,11 +137,24 @@ commande interpret_cmd(char* cmd_str) {
     }
 }
 
-int execute_cmd_client(commande cmd)
+int execute_cmd_client(commande* cmd, Reservation* reservation, Cloud* cloud)
 {
-    if (cmd.cmd_type == CMD_ALLOC_WITH_NAMES || cmd.cmd_type == CMD_ALLOC_ALL || cmd.cmd_type == CMD_FREE_WITH_NAMES  || cmd.cmd_type == CMD_FREE_ALL || cmd.cmd_type == CMD_EXIT) {
+    if (cmd->cmd_type == CMD_ALLOC_WITH_NAMES) {
+        for (int i = 0; i < cmd->nb_server; i++)
+            if (reserve_resources(cloud, reservation, cmd->server_name[i], {.cpu = cmd->cpu[i], .memory = cmd->memory[i]}) == -1)
+                cerr << "Impossible d'allouer " << cmd->server_name[i] << endl;
         return 0;
-    } else if (cmd.cmd_type == CMD_HELP) {
+    } else if (cmd->cmd_type == CMD_FREE_WITH_NAMES) {
+        for (int i = 0; i < cmd->nb_server; i++)
+            free_allocation(cloud, reservation, cmd->server_name[i]);
+        return 0;
+    } else if (cmd->cmd_type == CMD_FREE_ALL) {
+        if (free_all_allocation(cloud, reservation) == -1)
+            cerr << "Free impossible" << endl;
+        return 0;
+    } else if (cmd->cmd_type == CMD_ALLOC_ALL || cmd->cmd_type == CMD_EXIT) {
+        return 0;
+    } else if (cmd->cmd_type == CMD_HELP) {
         cout << "alloc cpu mem:                   Allouer'cpu' cpu et 'mem' memory sur n'importe quel serveur" << endl;
         cout << "alloc (server_name cpu mem)+...: Allouer 'cpu' cpu et 'mem' memory sur le serveur 'server_name'" << endl;
         cout << "free (server_name)*:             Libérer tous ce qui a été alloué sur les serveurs spécifiés" << endl;

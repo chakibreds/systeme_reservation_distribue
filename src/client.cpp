@@ -32,6 +32,7 @@ void *listen_modif(void *params)
     {
         cout<< "Thread: attente" <<endl;
         int rcv = recvTCP(r->ds_client, r->msg, strlen(r->msg));
+        r->msg[rcv] = '\0';
         cout<< "Thread: rcv" <<endl;
         if (rcv == -1)
         {
@@ -46,9 +47,10 @@ void *listen_modif(void *params)
         else
         {
             if (r->msg != NULL && strlen(r->msg) > 0 && r->msg[0] == '[' && r->msg[strlen(r->msg)-1] == ']') {
-                cout << "Thread: Msg recu '" << r->msg << "'" << endl;
+                system("clear");
                 cloud = decode_cloud(r->msg,MAX_LEN_BUFFER_JSON);
                 print_cloud(cloud);
+                print_reservation(reservation);
             } else if (r->msg != NULL) {
                 cout << "< " << r->msg << endl;
             } else {
@@ -83,6 +85,7 @@ int main(int argc, char const *argv[])
     cout << "vous êtes : " << client.name << " et votre id est : " << client.id << endl;
 
     int ds = init_socket_client(ip_address, port);
+    reservation = init_reservation(cloud, client);
 
     fflush(stdin);
     pthread_t thread_id;
@@ -104,7 +107,7 @@ int main(int argc, char const *argv[])
     
         commande cmd = interpret_cmd(in_buffer);
         
-        if (execute_cmd_client(cmd) == -1) {
+        if (execute_cmd_client(&cmd, reservation, cloud) == -1) {
             cerr << "Erreur à l'éxecution de la commande" << endl;
             continue;
         }

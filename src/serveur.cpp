@@ -24,6 +24,15 @@ Cloud *cloud;
 Reservation *reservation;
 int id;
 
+/* Varibales partagé entre les threads de chaque processus */
+int* n_threads_concurant;
+int* n_threads_courant;
+
+int shm_concurant;
+int shm_courant;
+
+struct sembuf rendezvousP = {.sem_num = 2, .sem_op = -1, .sem_flg = 0};
+struct sembuf rendezvousV = {.sem_num = 2, .sem_op = 1, .sem_flg = 0};
 
 struct sembuf verrouP = {.sem_num = 0, .sem_op = -1, .sem_flg = 0};
 struct sembuf verrouV = {.sem_num = 0, .sem_op = 1, .sem_flg = 0};
@@ -59,7 +68,6 @@ char *execute_cmd(commande* cmd, Reservation *reservation, char* res)
         code_cloud(cloud, cloud_json, MAX_LEN_BUFFER_JSON);
         semop(semid, &signalP, 1);
         // wait ??
-        semop(semid, &signalV, 1);
         semop(semid, &verrouV, 1);
         strcpy(res, "commande d'allocation acceptée");
     }
@@ -79,9 +87,8 @@ char *execute_cmd(commande* cmd, Reservation *reservation, char* res)
         code_cloud(cloud, cloud_json, MAX_LEN_BUFFER_JSON);
         // envoi du signal de modification de cloud
         semop(semid, &signalP, 1);
-        semop(semid, &signalV, 1);
         semop(semid, &verrouV, 1);
-        strcpy(res, "commande de free acceptée");
+        strcpy(res, "commande de free accepte");
     }
     else if (cmd->cmd_type == CMD_EXIT || cmd->cmd_type == CMD_FREE_ALL)
     {
@@ -97,7 +104,6 @@ char *execute_cmd(commande* cmd, Reservation *reservation, char* res)
                 cerr << "impossible de coder le cloud en json" << endl;
             }
             semop(semid, &signalP, 1);
-            semop(semid, &signalV, 1);
         }
         semop(semid, &verrouV, 1);
         strcpy(res, "free all ok");
@@ -113,30 +119,44 @@ void *wait_thread(void *params)
     if (s != 0)
         cerr << "Can't set cancel state" << endl;
     s = pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+    cloud_json = (char*)shmat(shmid, NULL, 0);
+    n_threads_concurant = (int*)shmat(shm_concurant, NULL, 0);
+    n_threads_courant = (int*)shmat(shm_courant, NULL, 0);
+    if ((cloud_json == (void *)-1) || (n_threads_concurant == (void *)-1) || (n_threads_courant == (void *)-1)) {
+        perror("erreur shmat");
+        exit(1);
+    }
     while (1)
     {
-
         semop(semid, &signalZ, 1);
         semop(semid, &verrouP, 1);
 
         if (cloud_json != NULL && strlen(cloud_json) > 0 && cloud_json[0] == '[' && cloud_json[strlen(cloud_json)-1] == ']') {
 
-            int size_str = code_cloud(cloud, cloud_json, MAX_LEN_BUFFER_JSON);
-            if (size_str == -1)
-            {
-                cerr << "Impossible de coder le cloud" << endl;
+            cloud = decode_cloud(cloud_json, MAX_LEN_BUFFER_JSON);
+            if (cloud == NULL) {
+                cerr << "Impossible de decoder le cloud" << endl;
                 return NULL;
             }
-            strcpy(r->msg, cloud_json);
-            if (r != NULL && (sendTCP(r->ds_client, r->msg, strlen(r->msg) + 1) == -1))
-            {
-                perror("Can't send the message:");
-                break;
+            if (r != NULL) {
+                strcpy(r->msg, cloud_json);
+                if ((sendTCP(r->ds_client, r->msg, strlen(r->msg) + 1) == -1)) {
+                    perror("Can't send the message:");
+                    break;
+                }
             }
         } else {
             cerr << "Réception d'un cloud_json vide : " << (cloud_json==NULL?"null":"notnull") << endl;
         }
         semop(semid, &verrouV, 1);
+
+        semop(semid, &rendezvousP, 1);
+        (*n_threads_courant) += 1;
+        if ((*n_threads_courant) >= (*n_threads_concurant)) {
+            semop(semid, &signalV, 1);
+            (*n_threads_courant) = 0;
+        }
+        semop(semid, &rendezvousV, 1);
     }
     return NULL;
 }
@@ -163,8 +183,6 @@ int manage_user(int ds_client, int port)
     }
     reservation = init_reservation(cloud, client);
     semop(semid, &signalP, 1);
-    semop(semid, &signalV, 1);
-
     semop(semid, &verrouV, 1);
 
     fflush(stdin);
@@ -180,7 +198,9 @@ int manage_user(int ds_client, int port)
         if (strcmp(in_buffer, "") == 0)
             strcpy(in_buffer, "Erreur à l'éxecution de la commande");
 
+        semop(semid, &verrouP, 1);
         if (sendTCP(ds_client, in_buffer, strlen(in_buffer)) == -1){perror("Can't send the message:");break;}
+        semop(semid, &verrouV, 1);
     }
     return 0;
 }
@@ -193,7 +213,7 @@ int main(int argc, char const *argv[])
 {
     if (argc != 4)
     {
-        cout << argv[0] << " chemin_vers_fichier_shared_memory chemin_vers_fichier_json port" << endl;
+        cout << argv[0] << "chemin_vers_fichier_ipc chemin_vers_fichier_json port" << endl;
         exit(1);
     }
 
@@ -205,11 +225,20 @@ int main(int argc, char const *argv[])
         exit(1);
     }
     //initialistation de la shared memory
-    if ((shmid = shmget(cle, sizeof(char) * MAX_LEN_BUFFER_JSON, IPC_CREAT | 0666)) == -1)
+    if ((shmid = shmget(IPC_PRIVATE, sizeof(char) * MAX_LEN_BUFFER_JSON, IPC_CREAT | 0666)) == -1)
     {
         perror("erreur shmget");
         exit(1);
     }
+    if ((shm_concurant = shmget(IPC_PRIVATE, sizeof(int), IPC_CREAT | 0666)) == -1) {
+        perror("erreur shmget");
+        exit(1);
+    }
+    if ((shm_courant = shmget(IPC_PRIVATE, sizeof(int), IPC_CREAT | 0666)) == -1) {
+        perror("erreur shmget");
+        exit(1);
+    }
+
 
     cloud = init_cloud_json(argv[2]);
     if (cloud == NULL)
@@ -218,9 +247,11 @@ int main(int argc, char const *argv[])
         return 1;
     }
 
-    char *cloud_json = (char *)shmat(shmid, NULL, 0);
-    if (cloud_json == (void *)-1)
-    {
+    cloud_json = (char *)shmat(shmid, NULL, 0);
+    n_threads_concurant = (int*)shmat(shm_concurant, NULL, 0);
+    n_threads_courant = (int*)shmat(shm_courant, NULL, 0);
+
+    if ((cloud_json == (void *)-1) || (n_threads_concurant == (void *)-1) || (n_threads_courant == (void *)-1)) {
         perror("erreur shmat");
         exit(1);
     }
@@ -234,15 +265,16 @@ int main(int argc, char const *argv[])
 
     //shmdt((void *)cloud_json);
     // init semaphore;
-    if ((semid = semget(cle, 2, IPC_CREAT | 0666)) == -1)
+    if ((semid = semget(IPC_PRIVATE, 3, IPC_CREAT | 0666)) == -1)
     {
         perror("erreur semget");
         exit(1);
     }
     semun ctrl;
-    ctrl.array = (unsigned short *)malloc(2 * sizeof(unsigned short));
+    ctrl.array = (unsigned short *)malloc(3 * sizeof(unsigned short));
     ctrl.array[0] = 1;
     ctrl.array[1] = 1;
+    ctrl.array[2] = 1;
     if (semctl(semid, 0, SETALL, ctrl) == -1)
     {
         perror("erreur init sem");
@@ -250,7 +282,10 @@ int main(int argc, char const *argv[])
     id = -1;
 
     pthread_t thread_main;
-    cout << cloud_json << endl;
+
+    (*n_threads_concurant) = 1;
+    (*n_threads_courant) = 0;
+
     if (pthread_create(&thread_main, NULL, wait_thread, NULL) != 0) {
         cerr << "Can't create the waiting thread" << endl;
         return 1;
@@ -279,6 +314,15 @@ int main(int argc, char const *argv[])
             cout << "fils traitant le client" << endl;
             struct recv r;
             r.ds_client = ds_client;
+            n_threads_concurant = (int*)shmat(shm_concurant, NULL, 0);
+            n_threads_courant = (int*)shmat(shm_courant, NULL, 0);
+            if ((n_threads_concurant == (void *)-1) || (n_threads_courant == (void *)-1)) {
+                perror("erreur shmat");
+                exit(1);
+            }
+            semop(semid, &rendezvousP, 1);
+            (*n_threads_concurant) += 1;
+            semop(semid, &rendezvousV, 1);
             pthread_t thread_id;
             if (pthread_create(&thread_id, NULL, wait_thread, (void *)&r) != 0)
             {
