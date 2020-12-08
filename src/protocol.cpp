@@ -73,7 +73,6 @@ int waiting_for_client(int ds_server, int nb_client, struct sockaddr *addr_clien
         exit(EXIT_FAILURE);
     }
 
-    cout << "client connecté" << endl;
     return ds_client;
 }
 
@@ -82,7 +81,6 @@ int sendTCP(int socket, const char *buffer, int length)
     int sent = 0;
     int total = 0;
     if (send(socket, &length, sizeof(int), 0) <= 0) {return-1;}
-
     while (total < (int)length)
     {
         sent = send(socket, buffer + total, length - total, 0);

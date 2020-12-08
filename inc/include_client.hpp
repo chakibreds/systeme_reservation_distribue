@@ -4,6 +4,8 @@
 #include <signal.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/sem.h>
+#include <sys/ipc.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -14,6 +16,12 @@
 #include "../inc/protocol.hpp"
 
 using namespace std;
+
+int semid;
+
+struct sembuf signalP = {.sem_num = 0, .sem_op = -1, .sem_flg = 0};
+struct sembuf signalV = {.sem_num = 0, .sem_op = 1, .sem_flg = 0};
+struct sembuf signalZ = {.sem_num = 0, .sem_op = 0, .sem_flg = 0};
 
 int ds_client;
 
@@ -50,7 +58,14 @@ void *listen_modif(void *params)
                 print_cloud(cloud);
 
             } else if (r->msg != NULL) {
-                cout << "< " << r->msg << endl;
+                if (strcmp(r->msg,"wait")==0) {
+                    semop(semid, &signalV, 1);
+                    cout << "Mise en attente" << endl;
+                } else if (strcmp(r->msg, "stopwait")==0) {
+                    semop(semid, &signalP, 1);
+                } else {
+                    cout << r->msg << endl;
+                }
             } else {
                 cerr << "R->msg == NULL" << endl;
             }

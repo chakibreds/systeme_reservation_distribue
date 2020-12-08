@@ -35,25 +35,27 @@ int* n_threads_courant;
 int shm_concurant;
 int shm_courant;
 
-struct sembuf rendezvousP = {.sem_num = 2, .sem_op = -1, .sem_flg = 0};
-struct sembuf rendezvousV = {.sem_num = 2, .sem_op = 1, .sem_flg = 0};
-
 struct sembuf verrouP = {.sem_num = 0, .sem_op = -1, .sem_flg = 0};
 struct sembuf verrouV = {.sem_num = 0, .sem_op = 1, .sem_flg = 0};
 struct sembuf signalP = {.sem_num = 1, .sem_op = -1, .sem_flg = 0};
 struct sembuf signalV = {.sem_num = 1, .sem_op = 1, .sem_flg = 0};
 struct sembuf signalZ = {.sem_num = 1, .sem_op = 0, .sem_flg = 0};
 
-struct sembuf signalRdP = {.sem_num = 1, .sem_op = -1, .sem_flg = 0};
-struct sembuf signalRdV = {.sem_num = 1, .sem_op = 1, .sem_flg = 0};
-struct sembuf signalRdZ = {.sem_num = 1, .sem_op = 0, .sem_flg = 0};
+struct sembuf rendezvousP = {.sem_num = 2, .sem_op = -1, .sem_flg = 0};
+struct sembuf rendezvousV = {.sem_num = 2, .sem_op = 1, .sem_flg = 0};
 
-char *execute_cmd(commande* cmd, Reservation *reservation, char* res)
+struct sembuf signalRdP = {.sem_num = 3, .sem_op = -1, .sem_flg = 0};
+struct sembuf signalRdV = {.sem_num = 3, .sem_op = 1, .sem_flg = 0};
+struct sembuf signalRdZ = {.sem_num = 3, .sem_op = 0, .sem_flg = 0};
+
+
+char *execute_cmd(commande* cmd, Reservation *reservation, char* res, int ds_client)
 {
     strcpy(res, "");
     if (cmd->cmd_type == CMD_ALLOC_WITH_NAMES)
     {
         semop(semid, &verrouP, 1);
+        int waiting = 0;
         destroy_cloud(cloud);
         cloud = decode_cloud(cloud_json, MAX_LEN_BUFFER_JSON);
         int check;
@@ -61,6 +63,11 @@ char *execute_cmd(commande* cmd, Reservation *reservation, char* res)
         {
             cout << "mise en attente" << endl;
             semop(semid, &verrouV, 1);
+            if (waiting == 0 && sendTCP(ds_client, "wait", strlen("wait")) <= 0) {
+                cerr << "Error snd" << endl;
+                return res;
+            }
+            waiting = 1;
             semop(semid, &signalZ, 1);
             semop(semid, &verrouP, 1);
             destroy_cloud(cloud);
@@ -71,6 +78,12 @@ char *execute_cmd(commande* cmd, Reservation *reservation, char* res)
             semop(semid, &verrouV,1);
             return res;
         }
+        if (waiting == 1 && sendTCP(ds_client, "stopwait", strlen("stopwait")) <= 0) {
+            cerr << "Error snd" << endl;
+            semop(semid, &verrouV,1);
+            return res;
+        }
+
         for (int i = 0; i < cmd->nb_server; i++)
         {
             if (reserve_resources(cloud, reservation, cmd->server_name[i], {.cpu = cmd->cpu[i], .memory = cmd->memory[i]}) == -1)
@@ -133,13 +146,7 @@ void *wait_thread(void *params)
     if (s != 0)
         cerr << "Can't set cancel state" << endl;
     s = pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-    cloud_json = (char*)shmat(shmid, NULL, 0);
-    n_threads_concurant = (int*)shmat(shm_concurant, NULL, 0);
-    n_threads_courant = (int*)shmat(shm_courant, NULL, 0);
-    if ((cloud_json == (void *)-1) || (n_threads_concurant == (void *)-1) || (n_threads_courant == (void *)-1)) {
-        perror("erreur shmat");
-        exit(1);
-    }
+
     while (1)
     {
         semop(semid, &signalZ, 1);
@@ -218,7 +225,7 @@ int manage_user(int ds_client)
         char in_buffer[100];
         int rcv = recvCommandeTCP(ds_client, cmd);
         if (rcv == -1){perror("Error recv:");break;} 
-        execute_cmd(cmd, reservation, in_buffer);
+        execute_cmd(cmd, reservation, in_buffer, ds_client);
 
         if (strcmp(in_buffer, "") == 0)
             strcpy(in_buffer, "Erreur à l'éxecution de la commande");

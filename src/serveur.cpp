@@ -53,8 +53,7 @@ int main(int argc, char const *argv[])
 
     //shmdt((void *)cloud_json);
     // init semaphore;
-    if ((semid = semget(IPC_PRIVATE, 4, IPC_CREAT | 0666)) == -1)
-    {
+    if ((semid = semget(IPC_PRIVATE, 4, IPC_CREAT | 0666)) == -1) {
         perror("erreur semget");
         exit(1);
     }

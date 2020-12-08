@@ -25,6 +25,20 @@ int main(int argc, char const *argv[])
 
     ds_client = init_socket_client(ip_address, port);
 
+    if ((semid = semget(IPC_PRIVATE, 1, IPC_CREAT | 0666)) == -1)
+    {
+        perror("erreur semget");
+        exit(1);
+    }
+
+    semun ctrl;
+    ctrl.val = 0;
+
+    if (semctl(semid, 0, SETVAL, ctrl) == -1)
+    {
+        perror("erreur init sem");
+    }
+
     fflush(stdin);
     pthread_t thread_id;
     struct recv_msg r;
@@ -40,7 +54,17 @@ int main(int argc, char const *argv[])
         << "> ";
         char in_buffer[500];
         in_buffer[499] = '\0';
+        if (semctl(semid, 0, GETVAL) == 1) {
+            semop(semid, &signalZ, 1);
+            continue;
+        }
         fgets(in_buffer, 500, stdin);
+
+        if (semctl(semid, 0, GETVAL) == 1) {
+            semop(semid, &signalZ, 1);
+            continue;
+        }
+
         in_buffer[strlen(in_buffer) - 1] = '\0';
     
         commande cmd = interpret_cmd(in_buffer);
