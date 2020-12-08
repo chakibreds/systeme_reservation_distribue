@@ -1,65 +1,4 @@
-#include <iostream>
-#include <stdio.h>
-#include <pthread.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/sem.h>
-#include <unistd.h>
-#include <signal.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-
-
-
-#include "../inc/site.hpp"
-#include "../inc/cloud.hpp"
-#include "../inc/reservation.hpp"
-#include "../inc/define.hpp"
-#include "../inc/protocol.hpp"
-
-using namespace std;
-
-//------ Variables globales de clients
-Cloud *cloud;
-void *listen_modif(void *params)
-{
-
-    struct recv_msg *r = (struct recv_msg *)params;
-    int s = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    if (s != 0)
-        cerr << "Can't set cancel state" << endl;
-    s = pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-    while (1)
-    {
-        int rcv = recvTCP(r->ds_client, r->msg, strlen(r->msg));
-        r->msg[rcv] = '\0';
-        if (rcv == -1)
-        {
-            perror("Error recv:");
-            break;
-        }
-        else if (rcv == 0)
-        {
-            printf("< Message vide!\n");
-            break;
-        }
-        else
-        {
-            if (r->msg != NULL && strlen(r->msg) > 0 && r->msg[0] == '[' && r->msg[strlen(r->msg)-1] == ']') {
-                system("clear");
-                cloud = decode_cloud(r->msg,MAX_LEN_BUFFER_JSON);
-                print_cloud(cloud);
-
-            } else if (r->msg != NULL) {
-                cout << "< " << r->msg << endl;
-            } else {
-                cerr << "R->msg == NULL" << endl;
-            }
-        }
-    }
-    return NULL;
-}
+#include "../inc/include_client.hpp"
 /* 
     Ce programme se connecte au serveur puis 
         - le thread principal attend une demande saisi au clavier par l'utilisateur et l'envoi au serveur.
@@ -84,12 +23,12 @@ int main(int argc, char const *argv[])
     client.name[strlen(client.name) - 1] = '\0';
     cout << "vous êtes : " << client.name << " et votre id est : " << client.id << endl;
 
-    int ds = init_socket_client(ip_address, port);
+    ds_client = init_socket_client(ip_address, port);
 
     fflush(stdin);
     pthread_t thread_id;
     struct recv_msg r;
-    r.ds_client = ds;
+    r.ds_client = ds_client;
     if (pthread_create(&thread_id, NULL, listen_modif, (void *)&r) != 0)
     {
         cerr << "Can't create the waiting thread" << endl;
@@ -113,18 +52,14 @@ int main(int argc, char const *argv[])
         
         if (cmd.cmd_type == CMD_HELP) continue;
 
-        if (sendCommandeTCP(ds, &cmd) == -1) {perror("Can't send the message:");break;}
+        if (sendCommandeTCP(ds_client, &cmd) == -1) {perror("Can't send the message:");break;}
 
         if (cmd.cmd_type == CMD_EXIT) break;
         
         in_buffer[0] = '\0';
     }
 
-    char buffer[10];
-    if (recv(ds,buffer,10,0) == 0)
-    {
-        cout << "deconnexion"<<endl;
-    }
+    close(ds_client);
     
     if (pthread_cancel(thread_id) != 0)
         cerr << "Impossible de terminer le thread" << endl;

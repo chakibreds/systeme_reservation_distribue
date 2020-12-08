@@ -35,7 +35,7 @@ int init_socket_client(const char* ip_address, const char* port){
     if (ds == -1)
     {
         perror("Error socket:"),
-            exit(1);
+        exit(1);
     }
 
     struct sockaddr_in addr;
@@ -58,14 +58,14 @@ int init_socket_client(const char* ip_address, const char* port){
 /*
     @return ds_client
 */
-int waiting_for_client(int ds, int nb_client, struct sockaddr *addr_client, socklen_t *socklen)
+int waiting_for_client(int ds_server, int nb_client, struct sockaddr *addr_client, socklen_t *socklen)
 {
-    if (listen(ds, nb_client) == -1)
+    if (listen(ds_server, nb_client) == -1)
     {
         perror("Error listen:");
         exit(EXIT_FAILURE);
     }
-    int ds_client = accept(ds, addr_client, socklen);
+    int ds_client = accept(ds_server, addr_client, socklen);
 
     if (ds_client == -1)
     {
@@ -81,7 +81,7 @@ int sendTCP(int socket, const char *buffer, int length)
 {
     int sent = 0;
     int total = 0;
-    if (send(socket, &length, sizeof(int), 0) <= 0) {cerr<<"Error send"<<endl;exit(EXIT_FAILURE);}
+    if (send(socket, &length, sizeof(int), 0) <= 0) {return-1;}
 
     while (total < (int)length)
     {
@@ -96,7 +96,7 @@ int sendTCP(int socket, const char *buffer, int length)
 int recvTCP(int socket, char *buffer, int length)
 {
     int received = 0, total = 0;
-    if (recv(socket, &length, sizeof(int),0) < 0) {perror("Error rcv:");exit(EXIT_FAILURE);}
+    if (recv(socket, &length, sizeof(int),0) < 0) {return-1;}
     while(total < (int)length)
     {
         received = recv(socket, buffer + total, length - total, 0);

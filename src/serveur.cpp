@@ -1,263 +1,34 @@
-#include <iostream>
-#include <stdio.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/sem.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h> // htons
-#include <unistd.h>
-#include <string.h>
-#include "../inc/site.hpp"
-#include "../inc/cloud.hpp"
-#include "../inc/reservation.hpp"
-#include "../inc/define.hpp"
-#include "../inc/protocol.hpp"
-
-using namespace std;
-
-//------ Variables globales du serveur
-int semid;
-int shmid;
-char *cloud_json;
-Cloud *cloud;
-Reservation *reservation;
-int id;
-
-/* Varibales partagé entre les threads de chaque processus */
-int* n_threads_concurant;
-int* n_threads_courant;
-
-int shm_concurant;
-int shm_courant;
-
-struct sembuf rendezvousP = {.sem_num = 2, .sem_op = -1, .sem_flg = 0};
-struct sembuf rendezvousV = {.sem_num = 2, .sem_op = 1, .sem_flg = 0};
-
-struct sembuf verrouP = {.sem_num = 0, .sem_op = -1, .sem_flg = 0};
-struct sembuf verrouV = {.sem_num = 0, .sem_op = 1, .sem_flg = 0};
-struct sembuf signalP = {.sem_num = 1, .sem_op = -1, .sem_flg = 0};
-struct sembuf signalV = {.sem_num = 1, .sem_op = 1, .sem_flg = 0};
-struct sembuf signalZ = {.sem_num = 1, .sem_op = 0, .sem_flg = 0};
-
-struct sembuf signalRdP = {.sem_num = 1, .sem_op = -1, .sem_flg = 0};
-struct sembuf signalRdV = {.sem_num = 1, .sem_op = 1, .sem_flg = 0};
-struct sembuf signalRdZ = {.sem_num = 1, .sem_op = 0, .sem_flg = 0};
-
-char *execute_cmd(commande* cmd, Reservation *reservation, char* res)
-{
-    strcpy(res, "");
-    if (cmd->cmd_type == CMD_ALLOC_WITH_NAMES)
-    {
-        semop(semid, &verrouP, 1);
-        destroy_cloud(cloud);
-        cloud = decode_cloud(cloud_json, MAX_LEN_BUFFER_JSON);
-        while (check_commande(cloud, cmd) == -1)
-        {
-            cout << "mise en attente" << endl;
-            semop(semid, &verrouV, 1);
-            semop(semid, &signalZ, 1);
-            semop(semid, &verrouP, 1);
-            destroy_cloud(cloud);
-            cloud = decode_cloud(cloud_json, MAX_LEN_BUFFER_JSON);
-        }
-        for (int i = 0; i < cmd->nb_server; i++)
-        {
-            if (reserve_resources(cloud, reservation, cmd->server_name[i], {.cpu = cmd->cpu[i], .memory = cmd->memory[i]}) == -1)
-            {
-                cerr << "Impossible d'allouer " << cmd->server_name[i] << endl;
-            }
-        }
-        // envoi du signal de modification de cloud
-        code_cloud(cloud, cloud_json, MAX_LEN_BUFFER_JSON);
-        semop(semid, &signalP, 1);
-        // wait ??
-        semop(semid, &verrouV, 1);
-        strcpy(res, "commande d'allocation acceptée");
-    }
-    else if (cmd->cmd_type == CMD_ALLOC_ALL)
-    {
-        cout << "CMD_ALLOC_ALL" << endl;
-        cout << "non implémenté" << endl;
-        strcpy(res, "non implémenter");
-    }
-    else if (cmd->cmd_type == CMD_FREE_WITH_NAMES)
-    {
-        semop(semid, &verrouP, 1);
-        for (int i = 0; i < cmd->nb_server; i++)
-        {
-            free_allocation(cloud, reservation, cmd->server_name[i]);
-        }
-        code_cloud(cloud, cloud_json, MAX_LEN_BUFFER_JSON);
-        // envoi du signal de modification de cloud
-        semop(semid, &signalP, 1);
-        semop(semid, &verrouV, 1);
-        strcpy(res, "commande de free accepte");
-    }
-    else if (cmd->cmd_type == CMD_EXIT || cmd->cmd_type == CMD_FREE_ALL)
-    {
-        semop(semid, &verrouP, 1);
-        if (free_all_allocation(cloud, reservation) == -1)
-        {
-            cerr << "Free impossible" << endl;
-        }
-        else
-        {
-            if (code_cloud(cloud, cloud_json, MAX_LEN_BUFFER_JSON) == -1)
-            {
-                cerr << "impossible de coder le cloud en json" << endl;
-            }
-            semop(semid, &signalP, 1);
-        }
-        semop(semid, &verrouV, 1);
-        strcpy(res, "free all ok");
-    }
-    return res;
-}
-
-/* premier thread attends une modification pour afficher */
-void *wait_thread(void *params)
-{
-    struct recv_msg *r = (struct recv_msg *)params;
-    int s = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    if (s != 0)
-        cerr << "Can't set cancel state" << endl;
-    s = pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-    cloud_json = (char*)shmat(shmid, NULL, 0);
-    n_threads_concurant = (int*)shmat(shm_concurant, NULL, 0);
-    n_threads_courant = (int*)shmat(shm_courant, NULL, 0);
-    if ((cloud_json == (void *)-1) || (n_threads_concurant == (void *)-1) || (n_threads_courant == (void *)-1)) {
-        perror("erreur shmat");
-        exit(1);
-    }
-    while (1)
-    {
-        semop(semid, &signalZ, 1);
-        semop(semid, &verrouP, 1);
-
-        if (cloud_json != NULL && strlen(cloud_json) > 0 && cloud_json[0] == '[' && cloud_json[strlen(cloud_json)-1] == ']') {
-
-            cloud = decode_cloud(cloud_json, MAX_LEN_BUFFER_JSON);
-            if (cloud == NULL) {
-                cerr << "Impossible de decoder le cloud" << endl;
-                return NULL;
-            }
-            if (r != NULL) {
-                strcpy(r->msg, cloud_json);
-                if ((sendTCP(r->ds_client, r->msg, strlen(r->msg) + 1) == -1)) {
-                    perror("Can't send the message:");
-                    break;
-                }
-                print_reservation(reservation,r->msg);
-                if ((sendTCP(r->ds_client, r->msg, strlen(r->msg) + 1) == -1)) {
-                    perror("Can't send the message:");
-                    break;
-                }
-            }
-        } else {
-            cerr << "Réception d'un cloud_json vide : " << (cloud_json==NULL?"null":"notnull") << endl;
-        }
-        semop(semid, &verrouV, 1);
-
-        semop(semid, &rendezvousP, 1);
-        (*n_threads_courant) += 1;
-        if ((*n_threads_courant) >= (*n_threads_concurant)) {
-            semop(semid, &signalV, 1);
-            (*n_threads_courant) = 0;
-            semop(semid,&signalRdP,1);
-            semop(semid,&signalRdV,1);
-            semop(semid, &rendezvousV, 1);
-        }
-        else 
-        {
-            semop(semid, &rendezvousV, 1);
-            semop(semid,&signalRdZ,1);
-        }
-    }
-    return NULL;
-}
-
-int manage_user(int ds_client, int port)
-{
-
-    Client client;
-    client.id = ++id;
-    client.port = port;
-    strcpy(client.ip_address, "127.0.0.1");
-
-    semop(semid, &verrouP, 1);
-    cloud_json = (char *)shmat(shmid, NULL, 0);
-    if (cloud_json == (void *)-1)
-    {
-        perror("erreur shmat");
-        exit(1);
-    }
-    cloud = decode_cloud(cloud_json, MAX_LEN_BUFFER_JSON);
-    if (cloud == NULL)
-    {
-        cerr << "cloud NULL" << endl;
-    }
-    reservation = init_reservation(cloud, client);
-    semop(semid, &signalP, 1);
-    semop(semid, &verrouV, 1);
-
-    fflush(stdin);
-    commande* cmd = init_commande(cloud);
-    if (cmd == NULL) {cerr<<"Can't init commande"<<endl;return 1;}
-    while (1)
-    {
-        char in_buffer[100];
-        int rcv = recvCommandeTCP(ds_client, cmd);
-        if (rcv == -1){perror("Error recv:");break;} 
-        execute_cmd(cmd, reservation, in_buffer);
-
-        if (strcmp(in_buffer, "") == 0)
-            strcpy(in_buffer, "Erreur à l'éxecution de la commande");
-        if (cmd->cmd_type == CMD_EXIT)
-            break;
-        semop(semid, &verrouP, 1);
-        if (sendTCP(ds_client, in_buffer, strlen(in_buffer)) == -1){perror("Can't send the message:");break;}
-        semop(semid, &verrouV, 1);
-    }
-    return 0;
-}
-
+#include "../inc/include_server.hpp"
 /* 
     Ce programme initialise l'état des ressources et se met en écoute des demandes des clients
     Chaque client est gérer par un processus fils (fork()) qui éxecute la fonction .....();
  */
 int main(int argc, char const *argv[])
 {
-    if (argc != 4)
+    if (argc != 3)
     {
-        cout << argv[0] << "chemin_vers_fichier_ipc chemin_vers_fichier_json port" << endl;
+        cout << argv[0] << " chemin_vers_fichier_json port" << endl;
         exit(1);
     }
+    const char *json_file = argv[1], *port = argv[2];
 
-    //recupération de la key pour les ipc
-    key_t cle = ftok(argv[1], 'a');
-    if (cle == -1)
-    {
-        perror("erreur ftok:");
-        exit(1);
-    }
     //initialistation de la shared memory
-    if ((shmid = shmget(IPC_PRIVATE, sizeof(char) * MAX_LEN_BUFFER_JSON, IPC_CREAT | 0666)) == -1)
+    if ((shmid = shmget(IPC_PRIVATE, sizeof(char) * MAX_LEN_BUFFER_JSON, IPC_CREAT | 0600)) == -1)
     {
         perror("erreur shmget");
         exit(1);
     }
-    if ((shm_concurant = shmget(IPC_PRIVATE, sizeof(int), IPC_CREAT | 0666)) == -1) {
+    if ((shm_concurant = shmget(IPC_PRIVATE, sizeof(int), IPC_CREAT | 0600)) == -1) {
         perror("erreur shmget");
         exit(1);
     }
-    if ((shm_courant = shmget(IPC_PRIVATE, sizeof(int), IPC_CREAT | 0666)) == -1) {
+    if ((shm_courant = shmget(IPC_PRIVATE, sizeof(int), IPC_CREAT | 0600)) == -1) {
         perror("erreur shmget");
         exit(1);
     }
 
 
-    cloud = init_cloud_json(argv[2]);
+    cloud = init_cloud_json(json_file);
     if (cloud == NULL)
     {
         cerr << "Impossible de créer le Cloud" << endl;
@@ -298,7 +69,7 @@ int main(int argc, char const *argv[])
     {
         perror("erreur init sem");
     }
-    id = -1;
+    id = 0;
 
     pthread_t thread_main;
 
@@ -310,17 +81,24 @@ int main(int argc, char const *argv[])
         return 1;
     }
     cout << "****** Initialisation terminée ******" << endl;
-    int ds = init_socket(argv[3]);
+    ds_server_main = init_socket(port);
+    parent_pid = getpid();
+
+    if (signal(SIGINT, server_signal_handler) == SIG_ERR) cerr << "Can't handel SIGINT" << endl;
+
     cout << "En attente des clients..." << endl;
 
 
-    while (1)
-    {
+    while (1) {
         struct sockaddr_in addr_client;
         socklen_t socklen;
         // en attente d'une demande de connection
-        int ds_client = waiting_for_client(ds, 10, (struct sockaddr *)&addr_client, &socklen);
+        int ds_client = waiting_for_client(ds_server_main, 10, (struct sockaddr *)&addr_client, &socklen);
         int fork_return = -1;
+        id++;
+
+        all_client_ds = (int*) realloc(all_client_ds, id * sizeof(int));
+        all_client_ds[id - 1] = ds_client;
 
         if ((fork_return = fork()) == -1)
         {
@@ -348,17 +126,16 @@ int main(int argc, char const *argv[])
                 cerr << "Can't create the waiting thread" << endl;
                 return 1;
             }
-            if (manage_user(ds_client, atoi(argv[3])) != 0)
+            if (manage_user(ds_client) != 0)
             {
                 cerr<< "erreur manage_user"<<endl;
             }
-            cout << "manage fini"<<endl;
             semop(semid, &verrouP, 1);
             if (pthread_cancel(thread_id) != 0)
                 cerr << "Impossible de terminer le thread" << endl;
 
             if (pthread_join(thread_id, NULL) != 0)
-                cout << "impossible de joiner" << endl;
+                cerr << "impossible de joiner" << endl;
             close(ds_client);
             semop(semid, &rendezvousP, 1);
             (*n_threads_concurant) -= 1;
