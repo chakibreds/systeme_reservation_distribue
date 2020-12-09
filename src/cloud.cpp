@@ -139,13 +139,15 @@ int rm_site(Cloud* cloud, int i) {
     return (cloud->sites==NULL)?-1:0;
 }
 
-int check_commande(Cloud* cloud, commande* cmd) {
+int check_commande(Cloud* cloud, commande* cmd, Cloud* cloud_initial) {
     if(cloud == NULL || cloud->sites == NULL) return -2;
     for (int i = 0; i < cmd->nb_server; i++) {
         int cpu = cmd->cpu[i], mem = cmd->memory[i];
         char* server_name = cmd->server_name[i];
         Site* site = get_site_by_name(cloud, server_name);
+        Site* site_init = get_site_by_name(cloud_initial, server_name);
         if (site == NULL) return -2;
+        if (cpu > get_cpu_available(site_init) || mem > get_memory_available(site_init) ) return -2;
         if (get_cpu_available(site) < cpu || get_memory_available(site) < mem) return -1;
     }
     return 0;

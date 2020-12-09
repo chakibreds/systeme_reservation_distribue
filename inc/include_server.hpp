@@ -22,6 +22,7 @@ int semid;
 int shmid;
 char *cloud_json;
 Cloud *cloud;
+Cloud *cloud_initial;
 Reservation *reservation;
 
 int* all_client_ds;
@@ -59,7 +60,7 @@ char *execute_cmd(commande* cmd, Reservation *reservation, char* res, int ds_cli
         destroy_cloud(cloud);
         cloud = decode_cloud(cloud_json, MAX_LEN_BUFFER_JSON);
         int check;
-        while ((check = check_commande(cloud, cmd)) == -1)
+        while ((check = check_commande(cloud, cmd,cloud_initial)) == -1)
         {
             cout << "mise en attente" << endl;
             semop(semid, &verrouV, 1);

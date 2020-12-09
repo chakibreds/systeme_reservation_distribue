@@ -80,7 +80,7 @@ Site* get_site_by_name(Cloud*, char*);
  */
 int rm_site(Cloud*, int pos);
 
-int check_commande(Cloud*, commande*);
+int check_commande(Cloud*, commande*, Cloud*);
 
 /* 
     Affiche un cloud

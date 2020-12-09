@@ -29,6 +29,7 @@ int main(int argc, char const *argv[])
 
 
     cloud = init_cloud_json(json_file);
+    cloud_initial = init_cloud_json(json_file);
     if (cloud == NULL)
     {
         cerr << "Impossible de créer le Cloud" << endl;
