@@ -245,14 +245,14 @@ int manage_user(int ds_client)
 }
 
 void server_signal_handler(int sig) {
-    if (getpid() == parent_pid) {
+    if (sig == SIGINT && getpid() == parent_pid) {
         cout << "SIGINT received" << endl;
         cout << "Free all client allocation" << endl;
+        semop(shmid, &signalP, 1);
         if (free_all_allocation(cloud,reservation) == -1)
             cerr << "Can't free all allocation" << endl;
         if (code_cloud(cloud, cloud_json, MAX_LEN_BUFFER_JSON) == -1)
             cerr << "Can't code cloud into json" << endl;
-        semop(shmid, &signalP, 1);
 
         if (shmdt(cloud_json) == -1
             || shmdt(n_threads_concurant) == -1
@@ -266,6 +266,8 @@ void server_signal_handler(int sig) {
 
         close(ds_server_main);
         cout << "Ending server" << endl;
+        exit(0);
+    } else if (getppid() == parent_pid) {
         exit(0);
     }
     exit(1);

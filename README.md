@@ -6,10 +6,6 @@ L’idée de ce projet s’inspire d’un système de réservation de ressources
 
 ## Utilisation
 
-### Configuration
-
-see [json-c-install]("https://github.com/json-c/json-c")
-
 ### Compilation
 
 La commande `make all` suffit à compiler tous les sources et créer les éxecutables `serveur` et `client`
@@ -18,24 +14,9 @@ Voir le [Makefile]("./makefile") pour plus de détails.
 
 ### Éxecution
 
-Éxecuter le `serveur` en lui donnant un port en paramètre ainsi que le fichier de [configuration des ressources]("./conf/ressources.json"). Puis sur un autre terminal, éxecuter un ou plusieurs processus `client` en lui donnant en paramètre l'addresse IP du serveur ainsi que le port. Voici un example : 
+Éxecuter le `serveur` en lui donnant un port en paramètre ainsi que le fichier de [configuration des ressources]("./conf/ressources.json"). Puis sur un autre terminal, éxecuter un ou plusieurs processus `client` en leur donnant en paramètre l'addresse IP du serveur ainsi que le port. Voici un example : 
 
 ```
-$> serveur 34000 conf/ressources.json
+$> serveur conf/ressources.json 34000
 $> client 127.0.0.1 34000
 ```
-
-## Modélisation
-
-### Structure Site
-
-### Structure Cloud
-
-### Structure Client
-
-L'implémentation du projet s'est faite en C++.
-
-## Auteurs
-
-- Elhouiti Chakib -> <celhouti@gmail.com>
-- Kezzoul Massili -> <massy.kezzoul@gmail.com>
