@@ -15,8 +15,8 @@ CXX      = g++
 CXXFLAGS = -std=c++2a -Wextra -Wall -pedantic# -g -O2 
 LDFLAGS  = -lpthread
 
-CXXFLAGS += -I./inc #-I./inc/json #json-c
-LDFLAGS += -L./lib -ljson-c
+CXXFLAGS += -Iinc/json/ #json-c
+LDFLAGS += -Wl,-Rlib/ -Llib/ -ljson-c 
 
 SRCFILE = src
 INCFILE = inc
@@ -116,4 +116,4 @@ tar :
 	@tar -czvf $(ARCHIVE_NAME).tar.gz makefile $(SRC) $(INC) lib conf README.md
 zip : 
 	@echo "$(LGREENCOLOR)| Creating $(ARCHIVE_NAME).zip:    $(ENDCOLOR)$(LYELLOWCOLOR)$^$(ENDCOLOR)"
-	@zip -r $(ARCHIVE_NAME).zip makefile $(SRC) $(INC) lib conf README.md
+	@zip -r $(ARCHIVE_NAME).zip makefile $(SRCFILE) $(INCFILE) lib conf README.md

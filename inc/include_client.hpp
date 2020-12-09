@@ -51,24 +51,29 @@ void *listen_modif(void *params)
         }
         else
         {
+            char message_recu[500];
             r->msg[rcv] = '\0';
             if (r->msg != NULL && strlen(r->msg) > 0 && r->msg[0] == '[' && r->msg[strlen(r->msg)-1] == ']') {
-                system("clear");
                 cloud = decode_cloud(r->msg,MAX_LEN_BUFFER_JSON);
-                print_cloud(cloud);
 
             } else if (r->msg != NULL) {
                 if (strcmp(r->msg,"wait")==0) {
                     semop(semid, &signalV, 1);
-                    cout << "Mise en attente" << endl;
+                    strcpy(message_recu,"Mise en attente");
                 } else if (strcmp(r->msg, "stopwait")==0) {
                     semop(semid, &signalP, 1);
+                    strcpy(message_recu, "Reprise");
                 } else {
-                    cout << r->msg << endl;
+                    strcpy(message_recu, r->msg);
                 }
             } else {
                 cerr << "R->msg == NULL" << endl;
             }
+            system("clear");
+            print_cloud(cloud);
+            cout << message_recu << endl;
+            cout << "> ";
+
         }
     }
     return NULL;

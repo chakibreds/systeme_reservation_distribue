@@ -63,10 +63,10 @@ char *execute_cmd(commande* cmd, Reservation *reservation, char* res, int ds_cli
         {
             cout << "mise en attente" << endl;
             semop(semid, &verrouV, 1);
-            if (waiting == 0 && sendTCP(ds_client, "wait", strlen("wait")) <= 0) {
+            if ((waiting == 0) && (sendTCP(ds_client, "wait", strlen("wait")) <= 0)) {
                 cerr << "Error snd" << endl;
                 return res;
-            }
+            } else 
             waiting = 1;
             semop(semid, &signalZ, 1);
             semop(semid, &verrouP, 1);
@@ -78,7 +78,7 @@ char *execute_cmd(commande* cmd, Reservation *reservation, char* res, int ds_cli
             semop(semid, &verrouV,1);
             return res;
         }
-        if (waiting == 1 && sendTCP(ds_client, "stopwait", strlen("stopwait")) <= 0) {
+        if ((waiting == 1) && (sendTCP(ds_client, "stopwait", strlen("stopwait")) <= 0)) {
             cerr << "Error snd" << endl;
             semop(semid, &verrouV,1);
             return res;
@@ -93,9 +93,8 @@ char *execute_cmd(commande* cmd, Reservation *reservation, char* res, int ds_cli
         }
         // envoi du signal de modification de cloud
         code_cloud(cloud, cloud_json, MAX_LEN_BUFFER_JSON);
-        semop(semid, &signalP, 1);
-        // wait ??
         semop(semid, &verrouV, 1);
+        semop(semid, &signalP, 1);
         strcpy(res, "commande d'allocation acceptée");
     }
     else if (cmd->cmd_type == CMD_ALLOC_ALL)
@@ -113,8 +112,8 @@ char *execute_cmd(commande* cmd, Reservation *reservation, char* res, int ds_cli
         }
         code_cloud(cloud, cloud_json, MAX_LEN_BUFFER_JSON);
         // envoi du signal de modification de cloud
-        semop(semid, &signalP, 1);
         semop(semid, &verrouV, 1);
+        semop(semid, &signalP, 1);
         strcpy(res, "commande de free accepte");
     }
     else if (cmd->cmd_type == CMD_EXIT || cmd->cmd_type == CMD_FREE_ALL)
@@ -122,7 +121,8 @@ char *execute_cmd(commande* cmd, Reservation *reservation, char* res, int ds_cli
         semop(semid, &verrouP, 1);
         if (free_all_allocation(cloud, reservation) == -1)
         {
-            cerr << "Free impossible" << endl;
+            strcpy(res,"Free impossible");
+            return res;
         }
         else
         {
@@ -130,9 +130,10 @@ char *execute_cmd(commande* cmd, Reservation *reservation, char* res, int ds_cli
             {
                 cerr << "impossible de coder le cloud en json" << endl;
             }
-            semop(semid, &signalP, 1);
         }
         semop(semid, &verrouV, 1);
+        semop(semid, &signalP, 1);
+
         strcpy(res, "free all ok");
     }
     return res;

@@ -50,17 +50,17 @@ int main(int argc, char const *argv[])
     }
     while (1)
     {
-        cout << endl
-        << "> ";
         char in_buffer[500];
         in_buffer[499] = '\0';
         if (semctl(semid, 0, GETVAL) == 1) {
             semop(semid, &signalZ, 1);
             continue;
         }
+        cout << "> ";
         fgets(in_buffer, 500, stdin);
 
         if (semctl(semid, 0, GETVAL) == 1) {
+            cout << "Serveur en attente" << endl;
             semop(semid, &signalZ, 1);
             continue;
         }
