@@ -246,13 +246,18 @@ int manage_user(int ds_client)
 
 void server_signal_handler(int sig) {
     if (sig == SIGINT && getpid() == parent_pid) {
-        cout << "SIGINT received" << endl;
-        cout << "Free all client allocation" << endl;
+        cout << endl << "SIGINT received" << endl;
         semop(shmid, &signalP, 1);
         if (free_all_allocation(cloud,reservation) == -1)
             cerr << "Can't free all allocation" << endl;
-        if (code_cloud(cloud, cloud_json, MAX_LEN_BUFFER_JSON) == -1)
-            cerr << "Can't code cloud into json" << endl;
+        else 
+            cout << "Free all client allocation" << endl;
+
+        for (int i =0; i < id ; i++)
+            close(all_client_ds[i]);
+
+        close(ds_server_main);
+        cout << "Ending server" << endl;
 
         if (shmdt(cloud_json) == -1
             || shmdt(n_threads_concurant) == -1
@@ -260,12 +265,6 @@ void server_signal_handler(int sig) {
             cerr << "Can't detach shm" << endl;
 
         if (semctl(semid, 0, IPC_RMID) == -1) perror("Can't RM semaphore");
-
-        for (int i =0; i < id ; i++)
-            close(all_client_ds[i]);
-
-        close(ds_server_main);
-        cout << "Ending server" << endl;
         exit(0);
     } else if (getppid() == parent_pid) {
         exit(0);

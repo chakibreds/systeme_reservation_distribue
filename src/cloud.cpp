@@ -167,7 +167,7 @@ void print_cloud(Cloud* cloud) {
 }
 
 int code_cloud(Cloud* cloud, char* code, int size_string) {
-    if (cloud == NULL) return -1;
+    if (cloud == NULL || code == NULL) return -1;
     for (int i = 0; i < size_string; i++)
         code[i] = '\0';
     

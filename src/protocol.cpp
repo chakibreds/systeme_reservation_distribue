@@ -17,7 +17,9 @@ int init_socket(const char *port)
         perror("Error socket:");
         exit(1);
     }
-
+    int enable = 1;
+    if (setsockopt(ds, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0)
+        perror("setsockopt(SO_REUSEADDR) failed");
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = INADDR_ANY;

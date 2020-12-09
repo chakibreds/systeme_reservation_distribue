@@ -20,3 +20,7 @@ Voir le [Makefile]("./makefile") pour plus de détails.
 $> serveur conf/ressources.json 34000
 $> client 127.0.0.1 34000
 ```
+
+## Note
+
+Les réservations se font uniquement en mode exclusif. Le mode partagé n'est pas implémenté.
