@@ -4,6 +4,7 @@
 .vscode
 client
 serveur
+description.pdf
 # Object files
 *.o
 *.ko

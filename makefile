@@ -33,7 +33,7 @@ TEST = test_cloud # nom du programme de test
 SRC     = $(SRCFILE)/cloud.cpp $(SRCFILE)/site.cpp $(SRCFILE)/reservation.cpp $(SRCFILE)/define.cpp $(SRCFILE)/protocol.cpp  # ajout tout les sources annexe au main
 INC     = $(wildcard $(INCFILE)/*.hpp) $(wildcard $(INCFILE)/**/*.hpp)
 OBJ     = $(SRC:$(SRCFILE)/%.cpp=$(OBJFILE)/%.o)
-ARCHIVE_NAME = source_code#$(shell date +%D)
+ARCHIVE_NAME = projet#$(shell date +%D)
 
 ENDCOLOR    = \033[m
 
@@ -113,7 +113,10 @@ init:
 
 tar : 
 	@echo "$(LGREENCOLOR)| Creating $(ARCHIVE_NAME).tar.gz:    $(ENDCOLOR)$(LYELLOWCOLOR)$^$(ENDCOLOR)"
-	@tar -czvf $(ARCHIVE_NAME).tar.gz makefile $(SRC) $(INC) lib conf README.md
+	@mkdir -p ../projet/
+	@rm -rf ../projet/*
+	@cp -r makefile $(SRCFILE) $(INCFILE) lib conf README.md description.pdf ../projet/
+	@tar -czvf $(ARCHIVE_NAME).tar.gz ../projet/
 zip : 
 	@echo "$(LGREENCOLOR)| Creating $(ARCHIVE_NAME).zip:    $(ENDCOLOR)$(LYELLOWCOLOR)$^$(ENDCOLOR)"
-	@zip -r $(ARCHIVE_NAME).zip makefile $(SRCFILE) $(INCFILE) lib conf README.md
+	@zip -r $(ARCHIVE_NAME).zip makefile $(SRCFILE) $(INCFILE) lib conf README.md description.pdf
